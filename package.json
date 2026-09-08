@@ -1,0 +1,20 @@
+{
+  "name": "handpan-idle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PanIdle — jeu idle/incremental handpan (Mistral Pans). Web pur, sans backend.",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "sim": "node tests/simulation/run-simulation.mjs",
+    "readiness": "node tests/readiness/run-readiness.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PanIdle — le clicker handpan</title>
+  <meta name="description" content="Un jeu idle/incremental où l'on fabrique des handpans, par Mistral Pans.">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">🥁 PanIdle</div>
+    <div class="topbar__counter">
+      <span class="value" id="handpans-count">0 ♫</span>
+      <span class="rate" id="handpans-rate">0 ♫/s</span>
+    </div>
+    <div class="topbar__settings">
+      <button class="icon-btn" id="share-btn" title="Partager mon score">📤</button>
+      <button class="icon-btn" id="mute-btn" title="Couper le son">🔊</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="principal">Principal</button>
+    <button class="tab-btn" data-tab="atelier">Atelier</button>
+    <button class="tab-btn" data-tab="handpan">Handpan</button>
+  </nav>
+
+  <div id="cta-slot"></div>
+
+  <main>
+    <section class="screen active" id="screen-principal">
+      <div class="handpan-stage">
+        <div class="handpan-visual-wrap" id="handpan-mount"></div>
+        <div class="stage-stats">
+          <span>Handpan actif : <strong id="active-pan-label">—</strong></span>
+          <span>Total fabriqué : <strong id="total-made">0</strong></span>
+          <span>Percussions : <span class="metronome-dot" id="metronome-dot"></span></span>
+        </div>
+        <div id="pattern-status" class="pattern-panel" hidden>
+          <h3 id="pattern-status-name"></h3>
+          <div class="pattern-progress" id="pattern-status-dots"></div>
+          <button class="buy-btn buy-btn--secondary" id="pattern-cancel-btn">Annuler</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-atelier"></section>
+    <section class="screen" id="screen-handpan"></section>
+  </main>
+
+  <div class="offline-modal" id="offline-modal" hidden>
+    <div class="offline-modal__panel">
+      <h3>Bon retour !</h3>
+      <p id="offline-modal-text"></p>
+      <button class="buy-btn" id="offline-modal-close">Récupérer</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

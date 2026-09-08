@@ -1,0 +1,284 @@
+/* game.css — mise en page du jeu, au-dessus des tokens de theme.css. */
+
+* { box-sizing: border-box; }
+
+/* Garde-fou : sans ça, une règle de classe avec `display:flex` (ex. .offline-modal) écrase le
+   `display:none` par défaut du navigateur pour [hidden] — l'élément reste alors cliquable et
+   intercepte les clics même "caché" (bug réel détecté par tests/e2e/phase9-marketing.spec.js). */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+h1, h2, h3 { font-family: var(--font-display); color: var(--color-text); margin: 0 0 0.5rem; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ Barre ♫ persistante */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar__brand {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.topbar__counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.topbar__counter .value {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.topbar__counter .rate {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.topbar__settings {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.icon-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+}
+.icon-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+/* ------------------------------------------------------------------ Onglets */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 1.25rem 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-warm);
+  overflow-x: auto;
+}
+
+.tab-btn {
+  border: none;
+  background: transparent;
+  padding: 0.65rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+.tab-btn.active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+.tab-btn:hover:not(.active) { color: var(--color-text); }
+
+.screen { display: none; padding: 1.25rem; max-width: 900px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* ------------------------------------------------------------------ Écran Principal */
+.handpan-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0 2rem;
+}
+
+.handpan-visual-wrap { position: relative; }
+
+.handpan-svg { display: block; filter: drop-shadow(0 10px 26px rgba(0,0,0,0.18)); touch-action: none; }
+
+.note-group { cursor: pointer; transform-box: fill-box; transform-origin: center; }
+.note-circle {
+  fill: var(--color-note-tonal);
+  stroke: #686868;
+  stroke-width: 1.5;
+  transition: fill 0.1s ease;
+}
+.note-group:hover .note-circle { fill: #C8C8C8; }
+.note-group.active .note-circle { fill: var(--color-white) !important; }
+.note-group.active-strong .note-circle { fill: var(--color-accent-light) !important; }
+.note-label {
+  fill: var(--color-note-label);
+  font-weight: 600;
+  font-family: var(--font-body);
+  pointer-events: none;
+}
+
+.wave-ring { fill: none; stroke: rgba(255,255,255,0.7); stroke-width: 2; pointer-events: none; }
+@keyframes panidle-wave-expand {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+.floating-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.floating-number {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-accent);
+  font-size: 1rem;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.stage-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+.stage-stats strong { color: var(--color-text); }
+
+/* Métronome visuel discret */
+.metronome-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--color-border-dark);
+  display: inline-block;
+  transition: background 0.05s ease, transform 0.05s ease;
+}
+.metronome-dot.beat { background: var(--color-accent); transform: scale(1.4); }
+
+/* ------------------------------------------------------------------ Cartes d'achat (Atelier/Handpan) */
+.shop-section { margin-bottom: 2rem; }
+.shop-section h2 { font-size: 1.1rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.4rem; }
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.9rem;
+}
+
+.shop-card {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-white);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.shop-card.locked { opacity: 0.5; }
+.shop-card.owned { border-color: var(--color-accent-30); background: var(--color-accent-5); }
+
+.shop-card__title { font-weight: 700; font-size: 0.95rem; }
+.shop-card__desc { font-size: 0.8rem; color: var(--color-text-muted); }
+.shop-card__count { font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-light); }
+
+.buy-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 0.8rem;
+  background: var(--color-accent);
+  color: var(--color-white);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.buy-btn:hover { background: var(--color-accent-hover); }
+.buy-btn:disabled { background: var(--color-border-dark); color: var(--color-text-muted); cursor: not-allowed; }
+.buy-btn--secondary { background: var(--color-bg-warm); color: var(--color-text); border: 1px solid var(--color-border-dark); }
+.buy-btn--secondary:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+.card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* ------------------------------------------------------------------ Patterns / mini-jeu */
+.pattern-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,24,21,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.pattern-panel {
+  background: var(--color-white);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+}
+.pattern-progress { display: flex; gap: 0.35rem; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+.pattern-progress .step {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--color-border);
+}
+.pattern-progress .step.hit { background: var(--color-success); }
+.pattern-progress .step.miss { background: var(--color-error); }
+
+/* ------------------------------------------------------------------ Marketing (§12) */
+.cta-banner {
+  border: 1px solid var(--color-accent-30);
+  background: var(--color-accent-5);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.cta-banner p { margin: 0; font-size: 0.9rem; }
+.cta-banner a.buy-btn { text-decoration: none; display: inline-block; }
+
+.share-btn {
+  background: var(--color-text);
+  color: var(--color-white);
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.share-btn:hover { background: var(--color-bg-dark); }
+
+/* ------------------------------------------------------------------ Divers */
+.offline-modal {
+  position: fixed; inset: 0; background: rgba(26,24,21,0.55);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.offline-modal__panel {
+  background: var(--color-white); border-radius: 12px; padding: 1.5rem 2rem;
+  max-width: 380px; text-align: center;
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);
+}
+
+@media (max-width: 600px) {
+  .topbar { padding: 0.6rem 0.8rem; }
+  .screen { padding: 1rem 0.75rem; }
+}

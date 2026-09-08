@@ -1,0 +1,79 @@
+name: CI/CD
+
+# Un seul workflow, deux jobs : `test` (readiness : unitaires + e2e + simulation, sur
+# toute branche/PR) et `deploy` (GitHub Pages, uniquement sur push vers `main` et
+# seulement si `test` est vert — jamais de déploiement d'un état non prêt).
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Readiness (unitaires + e2e + simulation)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Installer Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Système de readiness (vitest + playwright + simulation)
+        run: npm run readiness
+
+      - name: Publier le rapport de readiness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-report
+          path: tests/readiness/report/
+          retention-days: 30
+
+      - name: Publier le rapport Playwright (traces sur échec)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  deploy:
+    name: Déploiement GitHub Pages
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Préparer le dossier de déploiement (site statique uniquement)
+        run: |
+          mkdir -p dist
+          cp -r index.html css src dist/
+
+      - name: Empaqueter pour GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Déployer
+        id: deployment
+        uses: actions/deploy-pages@v4
