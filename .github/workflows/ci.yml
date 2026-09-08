@@ -1,8 +1,12 @@
 name: CI/CD
 
 # Un seul workflow, deux jobs : `test` (readiness : unitaires + e2e + simulation, sur
-# toute branche/PR) et `deploy` (GitHub Pages, uniquement sur push vers `main` et
-# seulement si `test` est vert — jamais de déploiement d'un état non prêt).
+# toute branche/PR) et `deploy` (GitHub Pages, uniquement sur push vers la branche par
+# défaut du repo et seulement si `test` est vert — jamais de déploiement d'un état non
+# prêt). La comparaison se fait contre `github.event.repository.default_branch` (résolu
+# dynamiquement) plutôt qu'un nom en dur ("main") : ce repo est parti sans branche `main`
+# (défaut = claude/document-consultation-rogezn) et le pipeline doit rester correct qu'il
+# soit un jour renommé ou non.
 on:
   push:
     branches: ['**']
@@ -53,7 +57,7 @@ jobs:
   deploy:
     name: Déploiement GitHub Pages
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
       pages: write
