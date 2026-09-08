@@ -98,9 +98,14 @@ qui le rend testable en quelques millisecondes par Vitest, et c'est aussi ce que
 ## Déploiement
 
 Le jeu est un site statique déployé sur **GitHub Pages** via `.github/workflows/ci.yml`
-(job `deploy`, déclenché sur push vers `main`, uniquement si le job `test` — le système de
-readiness — est vert). Aucune étape de build : le dossier de déploiement est juste
-`index.html` + `css/` + `src/`.
+(job `deploy`, déclenché sur push vers la branche par défaut du repo, uniquement si le job
+`test` — le système de readiness — est vert). Aucune étape de build : le dossier de
+déploiement est juste `index.html` + `css/` + `src/`.
+
+**Prérequis unique, à faire une fois dans les réglages GitHub** (`Settings → Pages →
+Build and deployment → Source`) : choisir **"GitHub Actions"** (au lieu de "Deploy from a
+branch", le défaut). Sans ça, le job `deploy` échoue à l'étape `actions/deploy-pages` même
+si tout le reste est vert.
 
 ## Sauvegarde
 
