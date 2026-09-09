@@ -178,8 +178,10 @@ function genericCard(state, upgrade, isPreview) {
     id: `gen-${upgrade.id}`,
     title: upgrade.label,
     subtitle: `Chaque frappe ×${upgrade.effet.value}`,
-    count: thresholdMet && !isPreview
-      ? ''
+    // Un aperçu dont le seuil est déjà atteint n'attend pas un palier mais l'achat de
+    // l'amélioration précédente : l'annoncer par un seuil déjà franchi serait trompeur.
+    count: thresholdMet
+      ? (isPreview ? 'Disponible après l\'amélioration précédente' : '')
       : `Se débloque à ${formatNumber(upgrade.seuil.value)} ${metricLabel} · ${formatNumber(value)} atteints`,
     info: `Multiplie durablement la valeur de chaque frappe par ${upgrade.effet.value}. `
       + `Se cumule avec toutes les autres améliorations de cette section.`,
