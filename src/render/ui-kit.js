@@ -34,21 +34,30 @@ export function buyBtn({ action, id = '', price, label, affordable, extraDisable
  * derrière un bouton (i) — les formules étalées sur chaque carte noyaient l'information
  * utile (prix, effet) sous du texte technique.
  */
-export function card({ id, title, subtitle = '', count = '', info = '', actions = '', variant = '' }) {
+export function card({ id, title, subtitle = '', count = '', info = '', actions = '', variant = '', icon = '' }) {
   const infoBtn = info
     ? `<button class="info-btn" data-info-toggle="${id}" aria-label="Détail du calcul" aria-expanded="false">i</button>`
     : '';
   const infoPanel = info ? `<p class="card-info" data-info-panel="${id}" hidden>${info}</p>` : '';
+  // Ligne, pas vignette : depuis le filtrage des listes il ne reste souvent qu'une carte
+  // par section, et une grille de vignettes laissait alors les deux tiers de l'écran vides.
+  // Colonne de gauche = ce qu'on achète, colonne de droite = l'action.
+  const medallion = icon
+    ? `<span class="shop-card__icon" aria-hidden="true"><svg><use href="#${icon}"/></svg></span>`
+    : '';
   return `
-    <div class="shop-card ${variant}">
-      <div class="shop-card__head">
-        <span class="shop-card__title">${title}</span>
-        ${infoBtn}
+    <div class="shop-card ${variant}${icon ? ' has-icon' : ''}">
+      ${medallion}
+      <div class="shop-card__main">
+        <div class="shop-card__head">
+          <span class="shop-card__title">${title}</span>
+          ${infoBtn}
+        </div>
+        ${subtitle ? `<div class="shop-card__desc">${subtitle}</div>` : ''}
+        ${count ? `<div class="shop-card__count">${count}</div>` : ''}
       </div>
-      ${subtitle ? `<div class="shop-card__desc">${subtitle}</div>` : ''}
-      ${count ? `<div class="shop-card__count">${count}</div>` : ''}
+      <div class="shop-card__aside">${actions}</div>
       ${infoPanel}
-      ${actions}
     </div>`;
 }
 

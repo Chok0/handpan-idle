@@ -1,43 +1,66 @@
 /*
- * theme.css — charte graphique reprise du site Mistral Pans (js/../css/style.css:9-50).
- * Copié (pas partagé par dépôt : handpan-idle est un repo séparé, §14 "MIGRATION.md"
- * documente le passage à des tokens partagés si le jeu rejoint le site plus tard).
- * Palette identique à la source ; seules les variables utilisées par le jeu sont reprises.
+ * theme.css — palette du jeu.
+ *
+ * Reprend les tons SOMBRES de la charte Mistral Pans (#1A1815 est le `--color-bg-dark` du
+ * site) plutôt que son fond crème. Motif : sur fond clair avec une grille de cartes
+ * blanches, le jeu avait l'allure d'une page web. Un fond profond fait émerger
+ * l'instrument, autorise le mouvement en arrière-plan, et rapproche du registre "jeu".
+ *
+ * Trois règles tenues partout :
+ *   1. le handpan reste GRIS (sa coque et ses notes ne changent pas) — c'est ce qui le
+ *      fait ressortir sur le fond sombre, et c'est le vrai matériau ;
+ *   2. blanc chaud pour le texte, teal pour tout ce qui est actif/mis en avant ;
+ *   3. aucune couleur vive hors teal : pas de kitsch de clicker.
  */
 :root {
-  --color-bg: #FDFBF7;
-  --color-bg-warm: #F8F5EF;
-  --color-bg-dark: #1A1815;
-  --color-text: #2C2825;
-  --color-text-light: #6B6560;
-  --color-text-muted: #736E68;
-  --color-accent: #0D7377;
-  --color-accent-hover: #095456;
-  --color-accent-light: #14919B;
-  --color-border: #E8E4DC;
-  --color-border-dark: #D4CFC5;
-  --color-success: #3D6B4A;
-  --color-warning: #D97706;
-  --color-error: #DC2626;
+  /* --- Fonds, du plus profond au plus proche --- */
+  --color-bg: #100E0C;
+  --color-bg-deep: #0A0908;
+  --color-bg-warm: #1A1815;      /* le ton sombre de la charte du site */
+  --color-surface: #1E1B17;      /* panneaux */
+  --color-surface-hi: #272320;   /* survol */
+
+  /* --- Texte --- */
+  --color-text: #F3EFE8;         /* blanc chaud, pas blanc pur */
+  --color-text-light: #C6BEB3;
+  --color-text-muted: #8E867C;
+
+  /* --- Teal : accent unique --- */
+  --color-accent: #17A2AE;       /* version éclaircie, lisible sur fond sombre */
+  --color-accent-hover: #21C2CF;
+  --color-accent-deep: #0D7377;  /* le teal exact du site, pour les aplats */
+  --color-accent-5: rgba(23, 162, 174, 0.06);
+  --color-accent-10: rgba(23, 162, 174, 0.12);
+  --color-accent-20: rgba(23, 162, 174, 0.22);
+  --color-accent-30: rgba(23, 162, 174, 0.34);
+
+  /* --- Bordures : des voiles de lumière, pas des traits --- */
+  --color-border: rgba(243, 239, 232, 0.09);
+  --color-border-strong: rgba(243, 239, 232, 0.18);
+
+  /* --- États --- */
+  --color-success: #4FAE6B;
+  --color-warning: #E0A03C;
+  --color-error: #E0625C;
   --color-white: #FFFFFF;
 
-  --color-accent-5: rgba(13, 115, 119, 0.05);
-  --color-accent-10: rgba(13, 115, 119, 0.1);
-  --color-accent-20: rgba(13, 115, 119, 0.2);
-  --color-accent-30: rgba(13, 115, 119, 0.3);
+  /* --- Le handpan : gris, inchangé (matériau réel) --- */
+  --color-note-ding: #E4E1DC;
+  --color-note-tonal: #A9A49D;
+  --color-note-hover: #C9C4BC;
+  --color-note-stroke: #6A655E;
+  --color-note-label: #241F1A;
 
-  --color-note-ding: #D0D0D0;
-  --color-note-tonal: #A0A0A0;
-  --color-note-mutant: #909090;
-  --color-note-bottom: #707070;
-  --color-note-label: #2C1810;
+  /* --- Aurore boréale (arrière-plan animé) --- */
+  --aurora-1: rgba(23, 162, 174, 0.55);
+  --aurora-2: rgba(13, 115, 119, 0.45);
+  --aurora-3: rgba(79, 174, 155, 0.32);
 
+  /* --- Typographie : identique au site --- */
   --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-}
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
-@media (prefers-color-scheme: dark) {
-  /* Le site Mistral Pans n'a pas de thème sombre dédié : on garde la même palette claire
-     partout (cohérence "le jeu doit se sentir comme une page du site", §9). */
+  --radius: 10px;
+  --radius-lg: 16px;
 }

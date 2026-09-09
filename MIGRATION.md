@@ -21,6 +21,8 @@ le pont.
 |---|---|
 | `index.html` | Remplacé par une page Astro (`astro/src/pages/panidle.astro`) qui réutilise `BaseLayout` (Header/Footer/ContactModal déjà fournis). |
 | `css/theme.css` | Copie des tokens `--color-*`/`--font-*` de `css/style.css` du site — **doublon à risque de désynchronisation**. Une fois dans le site, la page charge directement le vrai `css/style.css` (déjà chargé globalement par `BaseLayout`) et hérite des tokens sans copie. |
+| `css/fonts.css` + `ressources/fonts/*.woff2` | Le jeu auto-héberge Fraunces / Inter / JetBrains Mono parce qu'il est servi seul. Sur le site, ces polices sont déjà celles de la charte : soit `style.css` les déclare déjà (rien à reprendre), soit **ce sont ces fichiers-là qu'il faut y installer** — le site déclare aujourd'hui `--font-display: 'Fraunces'` sans jamais charger la fonte, et retombe donc sur Georgia. Dans ce cas : déplacer les `.woff2` dans `ressources/fonts/` du site et le bloc `@font-face` dans `css/style.css`. |
+| `scripts/fetch-fonts.mjs` | Utilitaire ponctuel de récupération des `.woff2` ; inutile une fois les fichiers en place (à garder seulement si l'on veut pouvoir changer de famille). |
 | `scripts/dev-server.mjs` | Remplacé par `astro dev` (ou `netlify dev`). |
 | `.github/workflows/deploy.yml` | Le déploiement GitHub Pages n'a plus de raison d'être : Netlify build/déploie tout le site, y compris cette page. |
 | `playwright.config.js` (`webServer` pointant sur `scripts/dev-server.mjs`) | À réécrire pour pointer sur le serveur de dev Astro (`cd astro && npm run dev`, port 4321) si les tests e2e sont conservés (§4 plus bas). |
@@ -42,6 +44,7 @@ est un module autonome et cohérent : il devient un **sous-dossier unique dans
 | `css/game.css` | `css/panidle.css` (convention du site : un fichier CSS par page/feature à la racine de `css/`, ex. `css/boutique.css`) |
 | `tests/unit/*.test.js` | `tests/panidle/*.test.js` (racine du repo, à côté des autres `tests/*.test.js`) |
 | `tests/e2e/*.spec.js` | `tests/e2e/panidle/*.spec.js` (nouveau : premier usage de Playwright dans ce repo, voir §4) |
+| `tests/e2e/helpers.js` | `tests/e2e/panidle/helpers.js` (amorçage commun : ferme la mise en contexte et les jalons narratifs) |
 | `DECISIONS.md` | `docs/panidle-decisions.md` (convention `docs/` du site pour la doc de travail) |
 
 Ces modules restent des **modules ES standards** (`import`/`export`) — rien à réécrire en
@@ -82,6 +85,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 - **CSP** : le site n'autorise aucun `'unsafe-inline'` dans `script-src` (sauf override
   `commander` pour PayPlug). Le jeu n'a **aucun script inline exécutable** — tout est déjà
   dans des fichiers externes same-origin. Aucun changement de CSP nécessaire.
+  Les polices étant auto-hébergées, il n'y a rien non plus à ajouter en `style-src`/`font-src`.
 
 ## 4. Tests
 

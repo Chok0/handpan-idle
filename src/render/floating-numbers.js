@@ -8,6 +8,11 @@ export function spawnFloatingNumber(layer, x, y, text) {
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
   layer.appendChild(el);
+  // Centré sur la note et remonté au-dessus d'elle : posé sur ses coordonnées brutes, le
+  // gain se superposait au nom de la note ("Bb+1" au lieu de "Bb3" surmonté de "+1").
+  // Des marges, pas un transform : la boucle d'animation écrase `transform` à chaque frame.
+  el.style.marginLeft = `${-el.offsetWidth / 2}px`;
+  el.style.marginTop = `${-el.offsetHeight - 26}px`;
 
   const start = performance.now();
   const duration = 900;

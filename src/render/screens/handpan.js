@@ -38,10 +38,12 @@ function renderMasterPans(state) {
       ? `<a href="${pan.productUrl}" target="_blank" rel="noopener" class="card-link">Voir cet instrument en boutique →</a>` : '';
     return card({
       id: `pan-${pan.id}`,
+      icon: 'icon-pan',
       title: pan.label,
       subtitle: `${pan.notes.length} notes · ${panAmount(pan.noteValueBase)} par frappe`,
       info: `Gamme ${pan.gamme}, tonalité ${pan.tonalite}. Chaque frappe rapporte `
-        + `${formatNumber(pan.noteValueBase)} handpans de base, avant marteaux et améliorations.`,
+        + `${formatNumber(pan.noteValueBase)} handpan${pan.noteValueBase >= 2 ? 's' : ''} de base, `
+        + `avant marteaux et améliorations.`,
       variant: active ? 'owned' : '',
       actions: actions + productLink,
     });
@@ -63,6 +65,7 @@ function renderPassiveClickUpgrades(state) {
 
   const cards = entries.map(({ item: u }) => card({
     id: `passive-${u.id}`,
+    icon: 'icon-wave',
     title: u.label,
     subtitle: `+${Math.round(u.bonusPct * 100)} % sur chaque frappe`,
     info: `Ambiance sonore continue qui majore la valeur de chaque frappe de `
@@ -86,6 +89,7 @@ function renderPercussions(state) {
     <h2>Percussions</h2>
     <div class="shop-grid">${card({
       id: 'perc',
+      icon: 'icon-drum',
       title: next.label,
       subtitle: `Frappe sur le temps : ×${next.bonus}`,
       count: state.percussionTier > 0 ? `Palier actuel : ${current.label} (×${current.bonus})` : '',
@@ -119,6 +123,7 @@ function renderPatterns(state, now) {
     }
     return card({
       id: `pat-${p.id}`,
+      icon: 'icon-score',
       title: p.nom,
       subtitle: `${p.sequence.length} notes · jusqu'à ${panAmount(p.gainDeBase)}`,
       count: stats ? `Meilleure exécution : ${Math.round(stats.bestPrecision * 100)} %` : '',
@@ -176,18 +181,19 @@ function genericCard(state, upgrade, isPreview) {
 
   return card({
     id: `gen-${upgrade.id}`,
+    icon: 'icon-spark',
     title: upgrade.label,
     subtitle: `Chaque frappe ×${upgrade.effet.value}`,
     // Un aperçu dont le seuil est déjà atteint n'attend pas un palier mais l'achat de
     // l'amélioration précédente : l'annoncer par un seuil déjà franchi serait trompeur.
     count: thresholdMet
       ? (isPreview ? 'Disponible après l\'amélioration précédente' : '')
-      : `Se débloque à ${formatNumber(upgrade.seuil.value)} ${metricLabel} · ${formatNumber(value)} atteints`,
+      : `Se débloque à ${formatNumber(upgrade.seuil.value)} ${metricLabel} · ${formatNumber(value)} atteint${value >= 2 ? 's' : ''}`,
     info: `Multiplie durablement la valeur de chaque frappe par ${upgrade.effet.value}. `
       + `Se cumule avec toutes les autres améliorations de cette section.`,
     variant: locked ? 'locked' : '',
     actions: locked
-      ? ''
+      ? buyBtn({ action: 'buy-generic', id: upgrade.id, price: upgrade.cost, label: 'Verrouillé', affordable: false, extraDisabled: true })
       : buyBtn({ action: 'buy-generic', id: upgrade.id, price: upgrade.cost, label: 'Acheter', affordable: state.handpans >= upgrade.cost }),
   });
 }
@@ -199,6 +205,7 @@ function renderAccordageUltime(state) {
     <h2>Accordage Ultime</h2>
     <div class="shop-grid">${card({
       id: 'ultime',
+      icon: 'icon-tuning',
       title: 'Accordage Ultime',
       subtitle: `+${Math.round(ACCORDAGE_ULTIME.bonusPct * 100)} % de production, définitivement`,
       count: state.accordageUltimeCount > 0 ? `Réalisé ${state.accordageUltimeCount} fois` : '',

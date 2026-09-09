@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { startGame, dismissModals, panCount } from './helpers.js';
 
 test.describe('Phase 7 — Améliorations génériques & Accordage Ultime (§11)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await startGame(page);
   });
 
   test('Done si : Accordage Ultime est achetable plusieurs fois à coût croissant, chaque achat augmentant la production', async ({ page }) => {
@@ -13,6 +12,7 @@ test.describe('Phase 7 — Améliorations génériques & Accordage Ultime (§11)
       e.state.handpans = 1e14;
       e.state.employees.master_tuner = 1; // débloque Accordage Ultime
     });
+    await dismissModals(page); // le Master Tuner a son propre jalon narratif
     await page.locator('.tab-btn[data-tab="handpan"]').click();
 
     const prodBefore = await page.evaluate(() => window.PanIdle.engine.getProductionPerSecond());

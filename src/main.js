@@ -9,6 +9,7 @@ import { formatNumber } from './engine/economy.js';
 import { panAmount } from './render/ui-kit.js';
 import { getMasterPan } from './data/master-pans.js';
 import { getPattern, PATTERNS } from './data/patterns.js';
+import { INTRO } from './data/story.js';
 import { isOnBeat } from './engine/percussion.js';
 import * as purchasesEngine from './engine/purchases.js';
 
@@ -312,9 +313,13 @@ if (offlineReport && offlineReport.earned > 1) {
 // Son / mute
 // ---------------------------------------------------------------------------------------
 const muteBtn = document.getElementById('mute-btn');
+const soundIcon = document.getElementById('sound-icon');
 muteBtn.addEventListener('click', () => {
-  engine.state.settings.muted = !engine.state.settings.muted;
-  muteBtn.textContent = engine.state.settings.muted ? '🔇' : '🔊';
+  const muted = !engine.state.settings.muted;
+  engine.state.settings.muted = muted;
+  soundIcon.setAttribute('href', muted ? '#icon-sound-off' : '#icon-sound-on');
+  muteBtn.title = muted ? 'Rétablir le son' : 'Couper le son';
+  muteBtn.setAttribute('aria-label', muteBtn.title);
   audio.applyVolumes(engine.state.settings);
   engine.save();
 });
@@ -351,6 +356,44 @@ document.getElementById('share-btn').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------------------
+// Mise en contexte (1er lancement) et jalons narratifs
+// ---------------------------------------------------------------------------------------
+const introModal = document.getElementById('intro-modal');
+const storyModal = document.getElementById('story-modal');
+let storyModalOpen = false;
+
+if (engine.needsIntro()) {
+  document.getElementById('intro-text').textContent = INTRO.text;
+  document.getElementById('intro-close').textContent = INTRO.cta;
+  introModal.hidden = false;
+}
+document.getElementById('intro-close').addEventListener('click', () => {
+  introModal.hidden = true;
+  engine.markIntroSeen();
+  engine.save();
+  audio.ensureContext();
+  audio.resume();
+});
+
+document.getElementById('story-close').addEventListener('click', () => {
+  storyModal.hidden = true;
+  storyModalOpen = false;
+});
+
+/** Un seul jalon à la fois, et jamais par-dessus l'intro ou un pattern en cours. */
+function checkStoryBeats() {
+  if (storyModalOpen || !introModal.hidden || engine.activePatternRun) return;
+  const beat = engine.getPendingStoryBeat();
+  if (!beat) return;
+  document.getElementById('story-title').textContent = beat.title;
+  document.getElementById('story-text').textContent = beat.text;
+  storyModal.hidden = false;
+  storyModalOpen = true;
+  engine.markStoryBeatSeen(beat.id);
+  engine.save();
+}
+
+// ---------------------------------------------------------------------------------------
 // Métronome visuel discret (§6.3/§9)
 // ---------------------------------------------------------------------------------------
 const metronomeDot = document.getElementById('metronome-dot');
@@ -372,7 +415,7 @@ let lastShopRefresh = 0;
 
 function updateTopbar() {
   document.getElementById('handpans-count').innerHTML = panAmount(engine.state.handpans);
-  document.getElementById('handpans-rate').innerHTML = `${panAmount(engine.getProductionPerSecond())} / s`;
+  document.getElementById('handpans-rate').innerHTML = `${panAmount(engine.getProductionPerSecond())}<span class="rate-unit">/s</span>`;
   document.getElementById('total-made').textContent = formatNumber(engine.state.totalHandpansMade);
 }
 
@@ -381,6 +424,7 @@ function loop(now) {
     const dt = (now - lastSimTime) / 1000;
     engine.tick(dt);
     audio.syncWithState(engine.state);
+    checkStoryBeats();
     lastSimTime = now;
   }
 

@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { startGame, dismissModals, panCount } from './helpers.js';
 
 test.describe('Phase 3 — Bâtiments niveau 2/3, employés supérieurs, conversion (§11)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await startGame(page);
   });
 
   test('Done si : convertir un Apprenti en Ouvrier coûte moins cher que l\'achat direct', async ({ page }) => {
@@ -15,6 +14,7 @@ test.describe('Phase 3 — Bâtiments niveau 2/3, employés supérieurs, convers
       e.buyBuildingNiveau1Next(); // Garage -> débloque niveau 2
       e.buyEmployeeDirect('apprenti');
     });
+    await dismissModals(page);
 
     await page.locator('.tab-btn[data-tab="atelier"]').click();
     await page.locator('[data-action="convert-employee"][data-id="ouvrier"]').click();
@@ -31,6 +31,7 @@ test.describe('Phase 3 — Bâtiments niveau 2/3, employés supérieurs, convers
       e.buyBuildingNiveau1Next();
       e.buyBuildingNiveau1Next();
     });
+    await dismissModals(page);
     await page.locator('.tab-btn[data-tab="atelier"]').click();
     await expect(page.locator('.shop-card__title', { hasText: 'Usine' })).toHaveCount(0);
 
@@ -39,6 +40,7 @@ test.describe('Phase 3 — Bâtiments niveau 2/3, employés supérieurs, convers
       e.buyBuilding('atelier');
       e.buyBuilding('showroom');
     });
+    await dismissModals(page);
     await page.locator('.tab-btn[data-tab="handpan"]').click();
     await page.locator('.tab-btn[data-tab="atelier"]').click();
     await expect(page.locator('.shop-card__title', { hasText: 'Usine' })).toBeVisible();

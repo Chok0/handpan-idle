@@ -44,6 +44,7 @@ export function createDefaultState() {
     },
 
     marketing: { ctaSeen: [] }, // ids de CTA déjà montrés (§12.2, éviter le spam)
+    story: { introSeen: false, beatsSeen: [] }, // mise en contexte + jalons narratifs
   };
 }
 
@@ -66,6 +67,7 @@ export function migrateState(raw) {
     passiveClickUpgrades: { ...base.passiveClickUpgrades, ...raw.passiveClickUpgrades },
     settings: { ...base.settings, ...raw.settings },
     marketing: { ...base.marketing, ...raw.marketing },
+    story: { ...base.story, ...raw.story },
     version: STATE_VERSION,
   };
   return merged;

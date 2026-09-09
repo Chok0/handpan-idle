@@ -1,0 +1,30 @@
+/* Polices de la charte Mistral Pans, auto-hébergées (sous-ensemble latin).
+   Le <link> vers Google Fonts laissait tout le jeu en police de secours dès que le CDN
+   était injoignable — et ajoutait une dépendance tierce que la charte du site proscrit.
+   Ce sont des fontes VARIABLES : un seul fichier par famille couvre toute la plage de
+   graisses, d'où le `font-weight: min max` plutôt qu'un @font-face par graisse.
+   Récupérées une fois par `node scripts/fetch-fonts.mjs`. */
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../ressources/fonts/fraunces-latin-8f90dc.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../ressources/fonts/inter-latin-6ab57b.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../ressources/fonts/jetbrains-mono-latin-0a7197.woff2') format('woff2');
+}

@@ -3,14 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#100E0C">
   <title>PanIdle — le clicker handpan</title>
-  <meta name="description" content="Un jeu idle/incremental où l'on fabrique des handpans, par Mistral Pans.">
+  <meta name="description" content="Un jeu idle où l'on fabrique des handpans, par Mistral Pans.">
+
+  <!-- Les polices de la charte étaient déclarées dans theme.css mais jamais chargées :
+       tout s'affichait en Georgia / police système. Auto-hébergées (aucun CDN). -->
+  <link rel="preload" href="ressources/fonts/inter-latin-6ab57b.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="ressources/fonts/fraunces-latin-8f90dc.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/fonts.css">
+
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
-  <!-- Sprite SVG : l'unité du jeu EST un handpan (§3), pas une note de musique.
-       Défini une fois, réutilisé partout via <use href="#icon-pan">. -->
+  <!-- Sprite SVG : l'unité du jeu EST un handpan (§3), pas une note de musique. -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="icon-pan" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="10.5" fill="currentColor" opacity="0.16"/>
@@ -23,54 +30,146 @@
       <circle cx="5.9" cy="15.5" r="1.45" fill="currentColor"/>
       <circle cx="5.9" cy="8.5" r="1.45" fill="currentColor"/>
     </symbol>
+    <symbol id="icon-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+      <path d="M12 15V3"/><path d="m8 7 4-4 4 4"/>
+    </symbol>
+    <symbol id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+    </symbol>
+    <symbol id="icon-sound-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/>
+    </symbol>
+
+    <!-- Pictogrammes de rubrique : chaque ligne d'achat porte le sien. Sans eux les listes
+         étaient des tableaux de texte — le reproche "il manque des assets visuels". -->
+    <symbol id="icon-hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5.5 7.5h13l1.5 3.5h-16z"/>
+      <path d="M12 11v9.5"/>
+    </symbol>
+    <symbol id="icon-worker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="7.5" r="3.5"/>
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>
+    </symbol>
+    <symbol id="icon-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 20.5h18"/><path d="M4.5 20.5V9.5L12 4l7.5 5.5v11"/>
+      <path d="M9.5 20.5v-5h5v5"/>
+    </symbol>
+    <symbol id="icon-score" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l10-2v13"/>
+      <circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>
+    </symbol>
+    <symbol id="icon-drum" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="12" cy="8" rx="8" ry="3.5"/>
+      <path d="M4 8v8c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5V8"/>
+      <path d="m6 10.5 12 6"/><path d="m18 10.5-12 6"/>
+    </symbol>
+    <symbol id="icon-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12h2l2-6 3 14 3-11 2.5 6H21"/>
+    </symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v6"/><path d="M12 15v6"/><path d="M3 12h6"/><path d="M15 12h6"/>
+      <path d="m6.5 6.5 3 3"/><path d="m14.5 14.5 3 3"/><path d="m17.5 6.5-3 3"/><path d="m9.5 14.5-3 3"/>
+    </symbol>
+    <symbol id="icon-tuning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 3v8a5 5 0 0 0 10 0V3"/><path d="M12 16v5"/>
+    </symbol>
   </svg>
-  <header class="topbar">
-    <div class="topbar__brand"><svg class="pan-icon pan-icon--brand" aria-hidden="true"><use href="#icon-pan"/></svg> PanIdle</div>
-    <div class="topbar__counter">
-      <span class="value" id="handpans-count">0</span>
-      <span class="rate" id="handpans-rate">0 / s</span>
-    </div>
-    <div class="topbar__settings">
-      <button class="icon-btn" id="share-btn" title="Partager mon score">📤</button>
-      <button class="icon-btn" id="mute-btn" title="Couper le son">🔊</button>
-    </div>
-  </header>
 
-  <nav class="tabs" id="tabs">
-    <button class="tab-btn active" data-tab="principal">Principal</button>
-    <button class="tab-btn" data-tab="atelier">Atelier</button>
-    <button class="tab-btn" data-tab="handpan">Handpan</button>
-  </nav>
+  <!-- Aurore boréale : trois rideaux de lumière teal qui dérivent lentement. -->
+  <div class="aurora" aria-hidden="true">
+    <div class="aurora__band aurora__band--1"></div>
+    <div class="aurora__band aurora__band--2"></div>
+    <div class="aurora__band aurora__band--3"></div>
+  </div>
 
-  <div id="cta-slot"></div>
-
-  <main>
-    <section class="screen active" id="screen-principal">
-      <div class="handpan-stage">
-        <div class="handpan-visual-wrap" id="handpan-mount"></div>
-        <div class="stage-stats">
-          <span>Handpan actif : <strong id="active-pan-label">—</strong></span>
-          <span>Total fabriqué : <strong id="total-made">0</strong></span>
-          <span>Percussions : <span class="metronome-dot" id="metronome-dot"></span></span>
-        </div>
-        <div id="pattern-status" class="pattern-panel" hidden>
-          <h3 id="pattern-status-name"></h3>
-          <p class="pattern-phase" id="pattern-status-phase"></p>
-          <div class="pattern-progress" id="pattern-status-dots"></div>
-          <button class="buy-btn buy-btn--secondary" id="pattern-cancel-btn">Annuler</button>
-        </div>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar__brand">
+        <svg class="pan-icon pan-icon--brand" aria-hidden="true"><use href="#icon-pan"/></svg>
+        <span>PanIdle</span>
       </div>
-    </section>
+      <div class="topbar__counter">
+        <span class="value" id="handpans-count">0</span>
+        <span class="rate" id="handpans-rate">0 / s</span>
+      </div>
+      <div class="topbar__settings">
+        <button class="icon-btn" id="share-btn" title="Partager mon score" aria-label="Partager mon score">
+          <svg aria-hidden="true"><use href="#icon-share"/></svg>
+        </button>
+        <button class="icon-btn" id="mute-btn" title="Couper le son" aria-label="Couper le son">
+          <svg aria-hidden="true"><use href="#icon-sound-on" id="sound-icon"/></svg>
+        </button>
+      </div>
+    </header>
 
-    <section class="screen" id="screen-atelier"></section>
-    <section class="screen" id="screen-handpan"></section>
-  </main>
+    <nav class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="principal">Instrument</button>
+      <button class="tab-btn" data-tab="atelier">Atelier</button>
+      <button class="tab-btn" data-tab="handpan">Collection</button>
+    </nav>
 
-  <div class="offline-modal" id="offline-modal" hidden>
-    <div class="offline-modal__panel">
-      <h3>Bon retour !</h3>
+    <div id="cta-slot"></div>
+
+    <main>
+      <section class="screen active" id="screen-principal">
+        <div class="handpan-stage">
+          <div class="handpan-visual-wrap" id="handpan-mount"></div>
+          <div class="stage-stats">
+            <span>Instrument : <strong id="active-pan-label">—</strong></span>
+            <span>Fabriqués : <strong id="total-made">0</strong></span>
+            <span>Tempo : <span class="metronome-dot" id="metronome-dot"></span></span>
+          </div>
+          <div id="pattern-status" class="pattern-panel" hidden>
+            <h3 id="pattern-status-name"></h3>
+            <p class="pattern-phase" id="pattern-status-phase"></p>
+            <div class="pattern-progress" id="pattern-status-dots"></div>
+            <button class="buy-btn buy-btn--secondary" id="pattern-cancel-btn">Abandonner</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-atelier"></section>
+      <section class="screen" id="screen-handpan"></section>
+    </main>
+  </div>
+
+  <!-- Mise en contexte au premier lancement : sans elle, on arrivait sur un disque gris
+       posé dans le vide, sans savoir quoi faire. -->
+  <div class="modal-backdrop" id="intro-modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+      <div class="modal-figure"><svg aria-hidden="true"><use href="#icon-pan"/></svg></div>
+      <h2 id="intro-title">Votre premier atelier</h2>
+      <p id="intro-text"></p>
+      <button class="buy-btn" id="intro-close">Frapper la première note</button>
+    </div>
+  </div>
+
+  <!-- Jalons narratifs : ponctuent la progression, une seule fois chacun. -->
+  <div class="modal-backdrop" id="story-modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="story-title">
+      <h3 id="story-title"></h3>
+      <p id="story-text"></p>
+      <button class="buy-btn" id="story-close">Continuer</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="offline-modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <h3>L'atelier a tourné sans vous</h3>
       <p id="offline-modal-text"></p>
-      <button class="buy-btn" id="offline-modal-close">Récupérer</button>
+      <button class="buy-btn" id="offline-modal-close">Récupérer la production</button>
     </div>
   </div>
 

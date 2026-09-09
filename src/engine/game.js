@@ -14,6 +14,7 @@ import {
   expectedNoteIndex,
 } from './patterns-runtime.js';
 import { getPattern, PATTERNS } from '../data/patterns.js';
+import { findPendingBeat } from '../data/story.js';
 import * as purchases from './purchases.js';
 
 const AUTOSAVE_INTERVAL_S = 15;
@@ -171,6 +172,25 @@ export class GameEngine {
   unlockPattern(id) { return purchases.unlockPattern(this.state, id); }
   buyGenericUpgrade(id) { return purchases.buyGenericUpgrade(this.state, id); }
   buyAccordageUltime() { return purchases.buyAccordageUltime(this.state); }
+
+  // -- Mise en contexte / jalons narratifs ------------------------------------------------------
+
+  needsIntro() {
+    return !this.state.story.introSeen;
+  }
+
+  markIntroSeen() {
+    this.state.story.introSeen = true;
+  }
+
+  /** Prochain jalon narratif à montrer (condition remplie, pas encore vu), ou null. */
+  getPendingStoryBeat() {
+    return findPendingBeat(this.state, this.state.story.beatsSeen);
+  }
+
+  markStoryBeatSeen(id) {
+    if (!this.state.story.beatsSeen.includes(id)) this.state.story.beatsSeen.push(id);
+  }
 
   // -- Marketing (§12) ------------------------------------------------------------------------
 

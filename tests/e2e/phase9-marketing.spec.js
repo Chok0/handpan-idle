@@ -1,18 +1,25 @@
 import { test, expect } from '@playwright/test';
+import { startGame, dismissModals, panCount } from './helpers.js';
 
 test.describe('Phase 9 — Intégration marketing (§11/§12)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await startGame(page);
   });
 
   test('Done si : débloquer un handpan maître référencé affiche un lien cliquable vers la vraie fiche produit', async ({ page }) => {
-    await page.evaluate(() => { window.PanIdle.engine.state.handpans = 1e5; });
+    await page.evaluate(() => {
+      const e = window.PanIdle.engine;
+      e.state.handpans = 1e5;
+      // La liste ne montre que le PROCHAIN pan verrouillé (filtrage des menus) : amara9 n'est
+      // proposé qu'une fois kurd10 acquis. On passe donc le palier précédent par le moteur.
+      e.unlockMasterPan('kurd10');
+    });
+    await dismissModals(page);
     await page.locator('.tab-btn[data-tab="handpan"]').click();
 
     // amara9 a un product_url défini dans src/data/master-pans.js
     await page.locator('[data-action="unlock-masterpan"][data-id="amara9"]').click();
+    await dismissModals(page);
 
     const cta = page.locator('.cta-banner a.buy-btn');
     await expect(cta).toBeVisible();

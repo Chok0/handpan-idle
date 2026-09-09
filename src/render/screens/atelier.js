@@ -20,6 +20,7 @@ function renderTools(state) {
       const apport = t.bonusPerUnit * employees;
       return card({
         id: `tool-${t.id}`,
+        icon: 'icon-hammer',
         title: t.label,
         subtitle: employees === 0
           ? '⚠ Sans effectif, un marteau ne rapporte rien — embauchez d\'abord.'
@@ -57,6 +58,7 @@ function renderEmployees(state) {
       }
       return card({
         id: `emp-${tier.id}`,
+        icon: 'icon-worker',
         title: tier.label,
         subtitle: `+${formatNumber(1 / tier.interval)} par seconde`,
         count: `Possédés : ${count}`,
@@ -90,6 +92,7 @@ function renderBuildingsN1(state) {
     <h2>Espace de travail</h2>
     <div class="shop-grid">${card({
       id: 'building1',
+      icon: 'icon-building',
       title: `${current.label} → ${next.label}`,
       subtitle: `${next.employeesMax} employés max · production ×${next.globalMult}`,
       info: `Votre atelier actuel (${current.label}) plafonne à ${current.employeesMax} employés. `
@@ -105,6 +108,7 @@ function renderBuildingsTier(state, defs, title) {
     const price = purchases.buildingCost(state, b.id);
     return card({
       id: `bat-${b.id}`,
+      icon: 'icon-building',
       title: b.label,
       subtitle: `+${b.employeesMaxPer} employés max · production ×${b.multPer}`,
       count: `Possédés : ${count}`,
@@ -125,6 +129,7 @@ function renderMultipliers(state) {
       const count = state.multipliers[m.id];
       return card({
         id: `mult-${m.id}`,
+        icon: 'icon-spark',
         title: m.label,
         subtitle: `Production globale ×${m.mult}`,
         count: count > 0 ? `Acheté ${count} fois` : '',
@@ -144,7 +149,7 @@ export function renderAtelierScreen(engine) {
   if (isNiveau2Unlocked(state)) parts.push(renderBuildingsTier(state, BUILDINGS_NIVEAU2, 'Locaux'));
   if (isNiveau3Unlocked(state)) parts.push(renderBuildingsTier(state, BUILDINGS_NIVEAU3, 'Grands locaux'));
   parts.push(renderMultipliers(state));
-  parts.push(`<p class="stage-stats">Production : <strong>${panAmount(productionPerSecond(state))} / s</strong>
-    · Bonus marteaux : <strong>+${panAmount(bonusMarteaux(state))} / frappe</strong></p>`);
+  parts.push(`<p class="stage-stats">Production : <strong>${panAmount(productionPerSecond(state))}<span class="rate-unit">/s</span></strong>
+    · Bonus marteaux : <strong>+${panAmount(bonusMarteaux(state))}<span class="rate-unit">/frappe</span></strong></p>`);
   return parts.join('\n');
 }

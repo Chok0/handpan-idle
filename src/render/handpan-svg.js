@@ -87,20 +87,44 @@ export function computeNotePositions(noteCount, center, tonalRadius) {
   return positions;
 }
 
+/** Diamètre visé sur grand écran. En dessous, on redessine à la largeur disponible. */
+const MAX_SIZE = 420;
+
 export class HandpanView {
   constructor(container, { onNoteHit } = {}) {
     this.container = container;
     this.onNoteHit = onNoteHit;
-    this.size = 340;
+    this.size = MAX_SIZE;
     this.notes = [];
     this.instanceId = ++instanceCounter;
     this._startTime = performance.now();
     this._raf = null;
     this._boundPointerDown = this._handlePointerDown.bind(this);
+    this._observeWidth();
+  }
+
+  /**
+   * Le SVG est redessiné à la taille réelle du conteneur plutôt que rétréci en CSS.
+   * Une unité SVG vaut ainsi toujours un pixel — ce dont dépendent les nombres flottants,
+   * qui sont des div positionnées en pixels par-dessus le SVG. Rétréci en CSS, le pan
+   * débordait l'écran mobile (viewport élargi à 427 px pour 390 px de large).
+   */
+  _observeWidth() {
+    if (typeof ResizeObserver === 'undefined') return;
+    this._resizeObserver = new ResizeObserver(() => {
+      const available = this.container.parentElement?.clientWidth ?? MAX_SIZE;
+      const next = Math.max(220, Math.min(MAX_SIZE, Math.floor(available)));
+      if (next === this.size || !this.notes.length) return;
+      this.size = next;
+      this.render();
+    });
+    if (this.container.parentElement) this._resizeObserver.observe(this.container.parentElement);
   }
 
   setNotes(notes) {
     this.notes = notes;
+    const available = this.container.parentElement?.clientWidth;
+    if (available) this.size = Math.max(220, Math.min(MAX_SIZE, Math.floor(available)));
     this.render();
   }
 
@@ -156,6 +180,7 @@ export class HandpanView {
   }
 
   destroy() {
+    this._resizeObserver?.disconnect();
     const svg = this.container.querySelector('svg');
     svg?.removeEventListener('pointerdown', this._boundPointerDown);
     if (this._boundKeyDown) svg?.removeEventListener('keydown', this._boundKeyDown);
@@ -232,6 +257,9 @@ export class HandpanView {
 
   /** Respiration idle (§10.1) : scale = 1 + 0.03*sin(t*freq + phase), phase décalée par note. */
   _startBreathing() {
+    // render() peut être rappelé (changement de pan, redimensionnement) : sans ça, chaque
+    // rendu empilait une boucle d'animation supplémentaire sur les mêmes éléments.
+    if (this._raf) cancelAnimationFrame(this._raf);
     const loop = (t) => {
       const elapsed = (t - this._startTime) / 1000;
       const groups = this.container.querySelectorAll('.note-group');

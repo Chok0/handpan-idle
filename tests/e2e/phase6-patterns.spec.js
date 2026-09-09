@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { startGame, dismissModals, panCount } from './helpers.js';
 
 test.describe('Phase 6 — Clic passif, percussions, patterns (§11)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await startGame(page);
   });
 
   test('Done si : un pattern joué en rythme rapporte davantage qu\'un pattern joué hors-rythme', async ({ page }) => {
@@ -14,8 +13,8 @@ test.describe('Phase 6 — Clic passif, percussions, patterns (§11)', () => {
     // GDD §6.4, déjà verrouillée finement par tests/unit/percussions-patterns.test.js.
     const { onRhythmGain, offRhythmGain } = await page.evaluate(async () => {
       const { GameEngine } = await import('/src/engine/game.js');
-      const { getPattern } = await import('/src/data/patterns.js');
-      const beatMs = 60000 / 90;
+      const { getPattern, patternStepTimesMs, beatIntervalMs } = await import('/src/data/patterns.js');
+      const beatMs = beatIntervalMs();
 
       function runOnce(aligned) {
         const engine = new GameEngine();
@@ -23,12 +22,18 @@ test.describe('Phase 6 — Clic passif, percussions, patterns (§11)', () => {
         engine.state.percussionTier = 1;
         engine.unlockPattern('trois_notes');
         engine.startPattern('trois_notes', 0);
+        // La démonstration est pilotée par l'UI : ici on passe directement la main au joueur.
+        engine.beginPatternPlayerPhase();
+
         const pattern = getPattern('trois_notes');
+        const stepTimes = patternStepTimesMs(pattern);
+        // La 1re frappe ANCRE l'horloge : on la pose sur une graduation du métronome quand on
+        // veut jouer juste, à contretemps (une demi-noire plus loin) quand on veut jouer faux.
+        const anchor = aligned ? 0 : beatMs / 2;
         let last;
-        for (const step of pattern.sequence) {
-          const t = aligned ? Math.round(step.t / beatMs) * beatMs : step.t + beatMs / 2;
-          last = engine.click(step.noteIndex, t);
-        }
+        pattern.sequence.forEach((step, i) => {
+          last = engine.click(step.noteIndex, anchor + stepTimes[i]);
+        });
         return last.gain;
       }
 

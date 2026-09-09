@@ -197,6 +197,53 @@ Verrouillé par un test de régression dédié (`tests/unit/production.test.js`,
 (exit code 1) si `problemCount > 0` — le système de readiness (§ ci-dessous) l'exécute
 automatiquement.
 
+## Refonte graphique — palette sombre, aurore, listes (bloc B)
+
+Retour de l'artisan : « on a quand même l'impression d'être sur un site web plus qu'un jeu ».
+Direction retenue : fond sombre repris du site, **pan gris** pour qu'il ressorte, blanc et
+teal pour les textes et les surbrillances, aurore boréale animée en arrière-plan.
+
+- **Palette (`css/theme.css`)** : `--color-bg: #100E0C`, surfaces `#1E1B17`, texte `#F3EFE8`,
+  accent teal `#17A2AE`. Les **notes du handpan restent grises** (`--color-note-tonal`) :
+  c'est le seul objet clair de l'écran, donc le sujet.
+- **Aurore** : trois rideaux flous en `mix-blend-mode: screen`, animés uniquement en
+  `transform`/`opacity` (composés par le GPU, aucun coût pour la boucle de jeu). Ce qui les
+  fait lire comme une aurore et non comme un simple lavis teal, c'est un **masque en rais** —
+  et ces rais doivent être **irréguliers** (`linear-gradient` à stops en %) : une première
+  version en `repeating-linear-gradient` donnait un store vénitien.
+- **Cartes d'achat → lignes pleine largeur.** Depuis le filtrage des menus (bloc A), une
+  section ne contient souvent qu'un ou deux items : la grille de vignettes les tassait dans
+  une colonne de 245 px en laissant les deux tiers de l'écran vides. Chaque item est
+  désormais une ligne (médaillon · libellé · prix), dans une colonne centrée de 760 px.
+- **Médaillons de rubrique** (`#icon-hammer`, `-worker`, `-building`, `-score`, `-drum`,
+  `-wave`, `-spark`, `-tuning`) : réponse au « manque d'assets visuels ». SVG dessinés à la
+  main dans le sprite d'`index.html`, aucune image importée — cohérent avec la contrainte
+  « procédural » du GDD.
+- **Polices auto-hébergées** (`css/fonts.css` + `ressources/fonts/`, 152 Ko pour les trois
+  familles en latin). Le `<link>` Google Fonts laissait TOUT le jeu en police de secours dès
+  que le CDN était injoignable, et la charte du site proscrit les dépendances CDN.
+  Régénération : `node scripts/fetch-fonts.mjs`.
+- **Mise en contexte et jalons narratifs** (`src/data/story.js`) : une intro au premier
+  lancement, puis neuf jalons déclenchés par des prédicats sur l'état (`when(state)`), une
+  seule fois chacun (`state.story.beatsSeen`, persisté). Sans l'intro, on arrivait sur un
+  disque gris posé dans le vide.
+
+### Deux bugs réels attrapés en regardant l'écran (pas par les tests)
+
+- **Le halo du pan élargissait le viewport mobile.** `.handpan-visual-wrap::before` faisait
+  128 % de la largeur du pan : un élément absolu déborde la largeur de défilement de son
+  conteneur, et Chrome élargissait alors le viewport de mise en page (390 px demandés,
+  427 px obtenus) — les modales se centraient **hors de l'écran**. Le rayonnement extérieur
+  passe désormais par des `drop-shadow` (qui ne participent pas à la mise en page) et le
+  pseudo-élément pulsé est confiné au disque. Piège associé : `overflow-x: clip` sur `<html>`
+  corrigeait bien la largeur mais **bloquait le défilement vertical** — une valeur `clip` sur
+  un axe force l'autre à `clip`.
+- **Le handpan est redessiné à la taille du conteneur** (`ResizeObserver`), il n'est pas
+  rétréci en CSS : une unité SVG doit valoir un pixel, parce que les nombres flottants sont
+  des `div` positionnées en pixels par-dessus le SVG.
+- **Les nombres flottants sont sur pastille sombre.** Ils passent au-dessus de la coque, qui
+  est **claire** : ni le teal ni le blanc n'y tenaient.
+
 ## Notes de testing (pas des bugs produit)
 
 - **Clics `{ force: true }` sur `.note-group` dans les tests e2e** : la respiration idle
@@ -204,12 +251,20 @@ automatiquement.
   cliquer un élément dont la position/apparence "bouge" (vérification de stabilité), ce qui
   n'a aucun sens pour un vrai clic souris — un humain clique très bien sur une note qui
   respire à 3%. D'où `{ force: true }` dans les specs qui cliquent une note.
-- **`tests/e2e/phase2-save.spec.js` ouvre un second onglet (`context.newPage()`) plutôt que
-  de `reload()` la page** : `main.js` sauvegarde sur `beforeunload` (comportement correct en
-  usage réel — capturer l'instant réel où l'utilisateur quitte). Un `page.reload()` sur une
-  page où le jeu tourne déjà déclenche ce `beforeunload` et ré-écrase l'horodatage de test
-  injecté manuellement dans `localStorage` avant même la navigation. Un nouvel onglet lit le
-  `localStorage` déjà écrit sans repasser par ce chemin.
+- **`tests/e2e/phase2-save.spec.js` ferme le premier onglet puis réinjecte la sauvegarde
+  via `addInitScript`.** `main.js` sauvegarde sur `beforeunload` (correct en usage réel), et
+  tant que le premier onglet vit, sa boucle de jeu continue de sauvegarder — autosave, jalon
+  narratif — et ré-horodate la sauvegarde à « maintenant », ce qui annule l'absence simulée.
+  Fermer l'onglet puis écrire le `localStorage` **avant** le chargement des scripts du second
+  est la seule séquence déterministe.
+- **`tests/e2e/helpers.js` est le point de passage obligé des specs.** Deux détails les
+  cassent silencieusement sinon : la mise en contexte du premier lancement recouvre l'écran
+  tant qu'on ne la ferme pas, et les jalons narratifs s'ouvrent **au tour de boucle suivant**
+  (10 Hz) — regarder l'écran juste après un achat ne montre rien, et la modale s'interpose
+  ensuite au milieu du test. D'où `dismissModals()`, qui n'abandonne qu'après deux tours
+  vides d'affilée. Les assertions sur le compteur portent sur le **nombre** (`panCount()`) et
+  non sur son texte : la monnaie s'affiche avec une icône SVG depuis le bloc A, et les
+  anciennes assertions `toHaveText('0 ♫')` étaient restées rouges sans être relancées.
 
 ## Divers
 

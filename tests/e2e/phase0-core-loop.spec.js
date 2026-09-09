@@ -1,20 +1,20 @@
 import { test, expect } from '@playwright/test';
+import { startGame, dismissModals, panCount } from './helpers.js';
 
 test.describe('Phase 0 — Squelette (§11)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await startGame(page);
   });
 
   test('Done si : cliquer une note du handpan augmente le compteur "Handpans fabriqués"', async ({ page }) => {
-    const counter = page.locator('#handpans-count');
-    await expect(counter).toHaveText('0 ♫');
+    // Le compteur affiche un nombre SUIVI D'UNE ICÔNE SVG : on compare le nombre, pas le
+    // texte complet (l'ancien '0 ♫' cassait dès que la monnaie a pris son icône handpan).
+    expect(await panCount(page)).toBe(0);
     // { force: true } : la respiration idle (§10.1, transform scale animé en continu) fait
     // échouer la vérification de "stabilité" de Playwright, qui n'a aucun sens pour un vrai
     // clic souris — voir DECISIONS.md.
     await page.locator('.note-group[data-index="0"]').click({ force: true });
-    await expect(counter).not.toHaveText('0 ♫');
+    await expect.poll(() => panCount(page)).toBeGreaterThan(0);
     await expect(page.locator('#total-made')).not.toHaveText('0');
   });
 
@@ -29,7 +29,7 @@ test.describe('Phase 0 — Squelette (§11)', () => {
     await expect(page.locator('#screen-principal')).toBeHidden();
     await page.locator('.tab-btn[data-tab="handpan"]').click();
     await expect(page.locator('#screen-handpan')).toBeVisible();
-    // La barre ♫ reste visible sur tous les écrans.
+    // La barre de monnaie reste visible sur tous les écrans.
     await expect(page.locator('.topbar')).toBeVisible();
   });
 });

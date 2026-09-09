@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { startGame, dismissModals, panCount } from './helpers.js';
 
 test.describe('Phase 4 — Marteaux, synergie clic/idle (§11)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await startGame(page);
   });
 
   test('Done si : augmenter le nombre d\'employés augmente visiblement le gain par clic via les Marteaux possédés', async ({ page }) => {
