@@ -2,9 +2,12 @@
 // dynamiques des handpans maîtres qui n'existent que dans les données, pas dans une bibliothèque
 // d'échantillons). AudioContext créé au premier appel (politique autoplay des navigateurs).
 import { METRONOME_BPM } from '../data/balance-constants.js';
+import { noteToFrequency } from '../data/note-frequency.js';
+import { Sampler } from './sampler.js';
 
 export class AudioEngine {
   constructor() {
+    this.sampler = new Sampler();
     this.ctx = null;
     this.masterGain = null;
     this.notesGain = null;
@@ -49,7 +52,30 @@ export class AudioEngine {
   // Notes du handpan — oscillateur sine + harmoniques légèrement inharmoniques (façon métal
   // frappé) + enveloppe ADSR courte (attaque quasi instantanée, chute exponentielle).
   // ---------------------------------------------------------------------------------------
-  playNote(frequency, { duration = 1.4, velocity = 1 } = {}) {
+  /**
+   * Joue une note du handpan. Priorité à l'échantillon réel enregistré par Mistral Pans ;
+   * la synthèse ne sert que de repli (échantillon pas encore chargé, fetch en échec,
+   * navigateur sans support). Le joueur entend donc le vrai instrument dès que possible.
+   */
+  playNote(noteName, { velocity = 1 } = {}) {
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    if (this.sampler.play(this.ctx, this.notesGain, noteName, { velocity })) return;
+
+    // Repli : synthèse, et on lance le chargement pour que la frappe suivante sonne juste.
+    this.sampler.load(this.ctx, noteName);
+    this._playSynthNote(noteToFrequency(noteName), { velocity });
+  }
+
+  /** Précharge les échantillons d'un handpan (au montage et à chaque changement de pan). */
+  preloadPan(noteNames) {
+    this.ensureContext();
+    if (!this.ctx) return Promise.resolve();
+    return this.sampler.preload(this.ctx, noteNames);
+  }
+
+  _playSynthNote(frequency, { duration = 1.4, velocity = 1 } = {}) {
     this.ensureContext();
     if (!this.ctx) return;
     const ctx = this.ctx;
@@ -180,18 +206,36 @@ export class AudioEngine {
     osc.stop(t0 + 0.04);
   }
 
+  /**
+   * Démarre le métronome AUDIBLE en le calant sur la grille absolue (`Date.now() % pas`),
+   * exactement celle qu'utilise `isOnBeat()` pour accorder le bonus.
+   *
+   * L'ancienne version démarrait un `setInterval` à un instant arbitraire : le tic qu'on
+   * entendait n'avait donc aucun rapport avec le tic qui comptait (0 tic sur 8 tombait dans
+   * la fenêtre de bonus). On entendait un temps, on frappait dessus, et on n'avait rien.
+   * Ici chaque tic est reprogrammé sur la prochaine graduation réelle, sans dérive cumulée.
+   */
   startMetronome(bpm = METRONOME_BPM) {
     if (this.metronomeTimer || !this.ctx) return;
-    this.metronomeBeat = 0;
-    this.metronomeTimer = setInterval(() => {
-      this.playMetronomeTick(this.metronomeBeat % 4 === 0);
-      this.metronomeBeat += 1;
-    }, 60000 / bpm);
+    const beatMs = 60000 / bpm;
+
+    const scheduleNext = () => {
+      const now = Date.now();
+      const delay = beatMs - (now % beatMs);
+      this.metronomeTimer = setTimeout(() => {
+        // Temps fort tous les 4 temps, dérivé de l'horloge absolue pour rester stable
+        // même si l'onglet a été mis en veille.
+        const beatIndex = Math.round(Date.now() / beatMs);
+        this.playMetronomeTick(beatIndex % 4 === 0);
+        scheduleNext();
+      }, delay);
+    };
+    scheduleNext();
   }
 
   stopMetronome() {
     if (this.metronomeTimer) {
-      clearInterval(this.metronomeTimer);
+      clearTimeout(this.metronomeTimer);
       this.metronomeTimer = null;
     }
   }

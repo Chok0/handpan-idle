@@ -9,11 +9,26 @@
   <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
+  <!-- Sprite SVG : l'unité du jeu EST un handpan (§3), pas une note de musique.
+       Défini une fois, réutilisé partout via <use href="#icon-pan">. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="icon-pan" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10.5" fill="currentColor" opacity="0.16"/>
+      <circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="12" cy="12" r="2.9" fill="currentColor"/>
+      <circle cx="12" cy="4.9" r="1.45" fill="currentColor"/>
+      <circle cx="18.1" cy="8.5" r="1.45" fill="currentColor"/>
+      <circle cx="18.1" cy="15.5" r="1.45" fill="currentColor"/>
+      <circle cx="12" cy="19.1" r="1.45" fill="currentColor"/>
+      <circle cx="5.9" cy="15.5" r="1.45" fill="currentColor"/>
+      <circle cx="5.9" cy="8.5" r="1.45" fill="currentColor"/>
+    </symbol>
+  </svg>
   <header class="topbar">
-    <div class="topbar__brand">🥁 PanIdle</div>
+    <div class="topbar__brand"><svg class="pan-icon pan-icon--brand" aria-hidden="true"><use href="#icon-pan"/></svg> PanIdle</div>
     <div class="topbar__counter">
-      <span class="value" id="handpans-count">0 ♫</span>
-      <span class="rate" id="handpans-rate">0 ♫/s</span>
+      <span class="value" id="handpans-count">0</span>
+      <span class="rate" id="handpans-rate">0 / s</span>
     </div>
     <div class="topbar__settings">
       <button class="icon-btn" id="share-btn" title="Partager mon score">📤</button>
@@ -40,6 +55,7 @@
         </div>
         <div id="pattern-status" class="pattern-panel" hidden>
           <h3 id="pattern-status-name"></h3>
+          <p class="pattern-phase" id="pattern-status-phase"></p>
           <div class="pattern-progress" id="pattern-status-dots"></div>
           <button class="buy-btn buy-btn--secondary" id="pattern-cancel-btn">Annuler</button>
         </div>

@@ -6,7 +6,13 @@ import { saveState, loadRawState, computeOfflineProgress, clearSave } from './sa
 import { computeClickGain, productionPerSecond, employeesMax } from './production.js';
 import { clampFinite } from './economy.js';
 import { isOnBeat } from './percussion.js';
-import { startPatternRun, recordPatternHit, finishPatternRun } from './patterns-runtime.js';
+import {
+  startPatternRun,
+  recordPatternHit,
+  finishPatternRun,
+  beginPlayerPhase,
+  expectedNoteIndex,
+} from './patterns-runtime.js';
 import { getPattern, PATTERNS } from '../data/patterns.js';
 import * as purchases from './purchases.js';
 
@@ -75,6 +81,12 @@ export class GameEngine {
    * @returns {{mode: 'click'|'pattern', gain?: number, onBeat?: boolean, patternFinished?: boolean}}
    */
   click(noteIndex, nowMs = Date.now()) {
+    // Pendant la démonstration, le joueur écoute : ses frappes ne comptent pas et ne
+    // couvrent pas la séquence qu'on est en train de lui montrer.
+    if (this.activePatternRun?.phase === 'demo') {
+      return { mode: 'demo' };
+    }
+
     if (this.activePatternRun) {
       const result = recordPatternHit(this.activePatternRun, noteIndex, nowMs, this.state);
       if (result.finished) {
@@ -110,8 +122,19 @@ export class GameEngine {
   startPattern(id, nowMs = Date.now()) {
     const check = this.canStartPattern(id, nowMs);
     if (!check.ok) return check;
-    this.activePatternRun = startPatternRun(id, nowMs);
+    this.activePatternRun = startPatternRun(id);
     return { ok: true };
+  }
+
+  /** Appelé par l'UI quand la démonstration est terminée : la main passe au joueur. */
+  beginPatternPlayerPhase() {
+    if (this.activePatternRun) beginPlayerPhase(this.activePatternRun);
+  }
+
+  /** Index de la note que le joueur doit frapper (surlignage), ou null. */
+  getExpectedPatternNote() {
+    if (!this.activePatternRun || this.activePatternRun.phase === 'demo') return null;
+    return expectedNoteIndex(this.activePatternRun);
   }
 
   /** Abandonne le pattern en cours sans récompense (sécurité UX, hors périmètre du GDD). */

@@ -40,7 +40,7 @@ const CATEGORIES = [
     effetMult: 1.15,
     baseCost: 200,
     growth: 10, // suit directement l'échelle des seuils (x10 à chaque palier)
-    labelFn: (s) => `Production à vie : ${s.toLocaleString('fr-FR')} ♫ fabriqués`,
+    labelFn: (s) => `Production à vie : ${s.toLocaleString('fr-FR')} fabriqués`,
   },
   {
     categorie: 'employes',

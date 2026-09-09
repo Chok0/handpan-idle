@@ -2,7 +2,9 @@
 export function spawnFloatingNumber(layer, x, y, text) {
   const el = document.createElement('div');
   el.className = 'floating-number';
-  el.textContent = text;
+  // `text` contient du balisage produit par nous (montant + icône handpan), jamais
+  // de saisie utilisateur : innerHTML est sûr ici et nécessaire pour rendre l'icône.
+  el.innerHTML = text;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
   layer.appendChild(el);

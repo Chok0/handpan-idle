@@ -1,12 +1,39 @@
 // Patterns (mélodies) — §6.4 du GDD.
 // Une séquence de zones à reproduire (motif moteur/rythmique), pas un jeu de reconnaissance
-// de hauteur : `note_id` référence l'index de la note sur le handpan maître actif au moment
-// de l'achat (les 2-3 premiers indices existent sur tous les pans du jeu, y compris le
-// starter à 9 notes, donc les patterns restent jouables même sur les petits pans requis).
+// de hauteur : `noteIndex` référence l'index de la note sur le handpan actif (les indices
+// utilisés existent sur tous les pans du jeu, starter 9 notes compris).
 //
-// `sequence[].t` = temps cible en ms depuis le début du pattern (tempo propre au pattern,
-// indépendant du métronome des Percussions — mais un bonus rythme actif s'applique en plus,
-// cf. §6.4 "combo pattern + rythme").
+// IMPORTANT — les positions sont exprimées en `beat` (temps musicaux, fractions autorisées :
+// 0.5 = croche, 0.25 = double-croche), PAS en millisecondes absolues. Elles sont converties
+// à l'exécution depuis METRONOME_BPM par `patternStepTimesMs()`.
+//
+// Pourquoi : avec des temps absolus arbitraires (350 ms) et un métronome à 667 ms, jouer le
+// pattern juste garantissait d'être HORS du temps — le "combo pattern + rythme" du §6.4 ne
+// pouvait quasiment jamais se déclencher. En calant les patterns sur la même grille que le
+// métronome, bien jouer le pattern ET être sur le temps deviennent la même chose.
+import { METRONOME_BPM } from './balance-constants.js';
+
+/** Durée d'un temps (noire) en ms — grille de référence commune à tout le jeu. */
+export function beatIntervalMs() {
+  return 60000 / METRONOME_BPM;
+}
+
+/** Temps cibles d'un pattern, en ms depuis son début. */
+export function patternStepTimesMs(pattern) {
+  const beat = beatIntervalMs();
+  return pattern.sequence.map((step) => step.beat * beat);
+}
+
+/**
+ * Fenêtre de tolérance d'un pattern : proportionnelle à son propre écartement, pour qu'un
+ * motif rapide reste jouable sans rendre un motif lent trivial. Plafonnée à 300 ms.
+ */
+export function patternToleranceMs(pattern) {
+  const times = patternStepTimesMs(pattern);
+  const spacings = times.slice(1).map((t, i) => t - times[i]);
+  const minSpacing = spacings.length ? Math.min(...spacings) : 600;
+  return Math.min(300, minSpacing * 0.6);
+}
 
 export const PATTERNS = [
   {
@@ -14,9 +41,9 @@ export const PATTERNS = [
     nom: 'Premier appel',
     notesRequisesIndex: [0],
     sequence: [
-      { noteIndex: 0, t: 0 },
-      { noteIndex: 0, t: 500 },
-      { noteIndex: 0, t: 1000 },
+      { noteIndex: 0, beat: 0 },
+      { noteIndex: 0, beat: 1 },
+      { noteIndex: 0, beat: 2 },
     ],
     difficulte: 1,
     gainDeBase: 25,
@@ -28,11 +55,11 @@ export const PATTERNS = [
     nom: 'Berceuse à trois notes',
     notesRequisesIndex: [0, 1, 2],
     sequence: [
-      { noteIndex: 0, t: 0 },
-      { noteIndex: 1, t: 450 },
-      { noteIndex: 2, t: 900 },
-      { noteIndex: 1, t: 1350 },
-      { noteIndex: 0, t: 1800 },
+      { noteIndex: 0, beat: 0 },
+      { noteIndex: 1, beat: 1 },
+      { noteIndex: 2, beat: 2 },
+      { noteIndex: 1, beat: 3 },
+      { noteIndex: 0, beat: 4 },
     ],
     difficulte: 2,
     gainDeBase: 80,
@@ -44,12 +71,12 @@ export const PATTERNS = [
     nom: 'Zigzag',
     notesRequisesIndex: [0, 1, 2, 3, 4],
     sequence: [
-      { noteIndex: 0, t: 0 },
-      { noteIndex: 2, t: 350 },
-      { noteIndex: 4, t: 700 },
-      { noteIndex: 1, t: 1050 },
-      { noteIndex: 3, t: 1400 },
-      { noteIndex: 0, t: 1750 },
+      { noteIndex: 0, beat: 0 },
+      { noteIndex: 2, beat: 0.5 },
+      { noteIndex: 4, beat: 1 },
+      { noteIndex: 1, beat: 1.5 },
+      { noteIndex: 3, beat: 2 },
+      { noteIndex: 0, beat: 3 },
     ],
     difficulte: 3,
     gainDeBase: 300,
@@ -61,14 +88,14 @@ export const PATTERNS = [
     nom: 'Cascade',
     notesRequisesIndex: [0, 1, 2, 3, 4, 5, 6],
     sequence: [
-      { noteIndex: 0, t: 0 },
-      { noteIndex: 1, t: 250 },
-      { noteIndex: 2, t: 500 },
-      { noteIndex: 3, t: 750 },
-      { noteIndex: 4, t: 1000 },
-      { noteIndex: 5, t: 1250 },
-      { noteIndex: 6, t: 1500 },
-      { noteIndex: 0, t: 1900 },
+      { noteIndex: 0, beat: 0 },
+      { noteIndex: 1, beat: 0.5 },
+      { noteIndex: 2, beat: 1 },
+      { noteIndex: 3, beat: 1.5 },
+      { noteIndex: 4, beat: 2 },
+      { noteIndex: 5, beat: 2.5 },
+      { noteIndex: 6, beat: 3 },
+      { noteIndex: 0, beat: 4 },
     ],
     difficulte: 4,
     gainDeBase: 1200,
@@ -80,16 +107,16 @@ export const PATTERNS = [
     nom: 'Ronde complète',
     notesRequisesIndex: [0, 1, 2, 3, 4, 5, 6, 7, 8],
     sequence: [
-      { noteIndex: 0, t: 0 },
-      { noteIndex: 1, t: 220 },
-      { noteIndex: 2, t: 440 },
-      { noteIndex: 3, t: 660 },
-      { noteIndex: 4, t: 880 },
-      { noteIndex: 5, t: 1100 },
-      { noteIndex: 6, t: 1320 },
-      { noteIndex: 7, t: 1540 },
-      { noteIndex: 8, t: 1760 },
-      { noteIndex: 0, t: 2100 },
+      { noteIndex: 0, beat: 0 },
+      { noteIndex: 1, beat: 0.5 },
+      { noteIndex: 2, beat: 1 },
+      { noteIndex: 3, beat: 1.5 },
+      { noteIndex: 4, beat: 2 },
+      { noteIndex: 5, beat: 2.5 },
+      { noteIndex: 6, beat: 3 },
+      { noteIndex: 7, beat: 3.5 },
+      { noteIndex: 8, beat: 4 },
+      { noteIndex: 0, beat: 5 },
     ],
     difficulte: 5,
     gainDeBase: 6000,
@@ -101,10 +128,10 @@ export const PATTERNS = [
     nom: 'Virtuose',
     notesRequisesIndex: [0, 1, 2, 3, 4, 5, 6, 7, 8],
     sequence: [
-      { noteIndex: 0, t: 0 }, { noteIndex: 3, t: 180 }, { noteIndex: 1, t: 360 },
-      { noteIndex: 5, t: 540 }, { noteIndex: 2, t: 720 }, { noteIndex: 7, t: 900 },
-      { noteIndex: 4, t: 1080 }, { noteIndex: 8, t: 1260 }, { noteIndex: 6, t: 1440 },
-      { noteIndex: 0, t: 1700 },
+      { noteIndex: 0, beat: 0 }, { noteIndex: 3, beat: 0.25 }, { noteIndex: 1, beat: 0.5 },
+      { noteIndex: 5, beat: 0.75 }, { noteIndex: 2, beat: 1 }, { noteIndex: 7, beat: 1.25 },
+      { noteIndex: 4, beat: 1.5 }, { noteIndex: 8, beat: 1.75 }, { noteIndex: 6, beat: 2 },
+      { noteIndex: 0, beat: 3 },
     ],
     difficulte: 6,
     gainDeBase: 40000,

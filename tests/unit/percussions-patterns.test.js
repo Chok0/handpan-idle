@@ -2,8 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { createDefaultState } from '../../src/engine/state.js';
 import * as purchases from '../../src/engine/purchases.js';
 import { isOnBeat, beatIntervalMs } from '../../src/engine/percussion.js';
-import { startPatternRun, recordPatternHit, finishPatternRun, RHYTHM_COMBO_THRESHOLD } from '../../src/engine/patterns-runtime.js';
-import { PATTERNS, getPattern } from '../../src/data/patterns.js';
+import {
+  startPatternRun,
+  recordPatternHit,
+  finishPatternRun,
+  beginPlayerPhase,
+  expectedNoteIndex,
+  RHYTHM_COMBO_THRESHOLD,
+} from '../../src/engine/patterns-runtime.js';
+import { PATTERNS, getPattern, patternStepTimesMs, beatIntervalMs as patternBeatMs } from '../../src/data/patterns.js';
 import { PERCUSSION_TIERS } from '../../src/data/balance-constants.js';
 
 describe('Percussions — §6.3', () => {
@@ -48,92 +55,163 @@ describe('Percussions — §6.3', () => {
 });
 
 describe('Patterns — §6.4', () => {
+  /** Amène un run jusqu'à la phase joueur (la démonstration est pilotée par l'UI). */
+  function runReadyToPlay(patternId) {
+    const run = startPatternRun(patternId);
+    beginPlayerPhase(run);
+    return run;
+  }
+
+  it("un run démarre en phase 'demo' sans horloge : le joueur écoute d'abord", () => {
+    const run = startPatternRun('trois_notes');
+    expect(run.phase).toBe('demo');
+    expect(run.startMs).toBeNull();
+  });
+
   it('refuse le déblocage si le handpan actif n\'a pas assez de notes', () => {
     const state = createDefaultState();
     state.handpans = 1e6;
-    // "virtuose" exige l'index 8 -> 9 notes ; le starter (kurd9) en a exactement 9, donc OK.
-    // On force un cas impossible avec un pattern fictif de plus haute exigence en réutilisant
-    // "cascade" (index max 6, 7 notes) sur un pan à moins de notes n'existe pas dans les données —
-    // on vérifie donc simplement que le pattern le plus exigeant reste jouable sur le starter.
     const hardest = PATTERNS[PATTERNS.length - 1];
     expect(purchases.unlockPattern(state, hardest.id)).toEqual({ success: true });
   });
 
-  it('mini-jeu : précision 1 si chaque frappe tombe pile sur le temps attendu et la bonne note', () => {
+  it("la 1re frappe ANCRE l'horloge : elle ne peut jamais être en retard", () => {
+    const state = createDefaultState();
+    const run = runReadyToPlay('trois_notes');
+    // Le joueur attend 10 secondes avant de se lancer : ça ne doit rien coûter.
+    const r = recordPatternHit(run, 0, 10_000, state);
+    expect(r.anchored).toBe(true);
+    expect(r.precision).toBe(1);
+    expect(run.startMs).toBe(10_000);
+    expect(run.phase).toBe('jeu');
+  });
+
+  it('précision 1 si chaque frappe tombe pile sur le temps attendu et la bonne note', () => {
     const state = createDefaultState();
     const pattern = getPattern('trois_notes');
-    const run = startPatternRun(pattern.id, 1000);
+    const run = runReadyToPlay(pattern.id);
+    const times = patternStepTimesMs(pattern);
+    const anchor = 5000;
     let last;
-    for (const step of pattern.sequence) {
-      last = recordPatternHit(run, step.noteIndex, 1000 + step.t, state);
-    }
+    pattern.sequence.forEach((step, i) => {
+      last = recordPatternHit(run, step.noteIndex, anchor + times[i], state);
+    });
     expect(last.finished).toBe(true);
-    const result = finishPatternRun(run, state);
-    expect(result.precisionMoyenne).toBeCloseTo(1, 5);
+    expect(finishPatternRun(run, state).precisionMoyenne).toBeCloseTo(1, 5);
+  });
+
+  it('la note attendue est exposée pour le surlignage', () => {
+    const run = runReadyToPlay('trois_notes');
+    const pattern = getPattern('trois_notes');
+    expect(expectedNoteIndex(run)).toBe(pattern.sequence[0].noteIndex);
+    recordPatternHit(run, pattern.sequence[0].noteIndex, 0, createDefaultState());
+    expect(expectedNoteIndex(run)).toBe(pattern.sequence[1].noteIndex);
   });
 
   it('une mauvaise note rapporte une précision de 0 pour cette frappe', () => {
     const state = createDefaultState();
-    const pattern = getPattern('ding_ding'); // toutes les étapes visent l'index 0
-    const run = startPatternRun(pattern.id, 0);
-    const r = recordPatternHit(run, 5, 0, state); // mauvaise note
+    const run = runReadyToPlay('ding_ding');
+    const r = recordPatternHit(run, 5, 0, state); // mauvaise note dès l'ancrage
     expect(r.precision).toBe(0);
     expect(r.noteCorrect).toBe(false);
   });
 
-  it("combo pattern + rythme : le bonus rythme ne s'applique QUE si les percussions sont actives ET on-beat", () => {
+  it('les patterns sont calés sur la grille du métronome (condition du combo §6.4)', () => {
+    // Chaque temps cible doit être un multiple exact d'une subdivision du temps musical.
+    const beat = patternBeatMs();
+    for (const pattern of PATTERNS) {
+      for (const t of patternStepTimesMs(pattern)) {
+        const ratio = (t / beat) * 4; // en double-croches
+        expect(Math.abs(ratio - Math.round(ratio))).toBeLessThan(1e-9);
+      }
+    }
+  });
+
+  it("combo pattern + rythme : joué juste ET sur le temps, le bonus de percussion s'applique", () => {
     const state = createDefaultState();
     state.percussionTier = 1;
-    const pattern = getPattern('ding_ding');
-    const beatMs = beatIntervalMs();
-    const run = startPatternRun(pattern.id, 0);
-    // On frappe chaque étape pile sur un multiple du temps (on-beat) ET au bon moment du pattern.
-    for (const step of pattern.sequence) {
-      const t = Math.round((step.t) / beatMs) * beatMs; // aligné sur la grille métronome
-      recordPatternHit(run, step.noteIndex, t, state);
-    }
+    const pattern = getPattern('trois_notes');
+    const run = runReadyToPlay(pattern.id);
+    const times = patternStepTimesMs(pattern);
+    const beat = patternBeatMs();
+    const anchor = Math.round(1e6 / beat) * beat; // ancre posée sur la grille absolue
+    pattern.sequence.forEach((step, i) => {
+      recordPatternHit(run, step.noteIndex, anchor + times[i], state);
+    });
     const result = finishPatternRun(run, state);
     expect(result.onBeatRatio).toBeGreaterThanOrEqual(RHYTHM_COMBO_THRESHOLD);
     expect(result.bonusRythmeActif).toBe(PERCUSSION_TIERS[1].bonus);
-    // gain_pattern_final = gain_de_base × précision × bonus_rythme (multiplicatif, §6.4)
-    expect(result.gain).toBeCloseTo(pattern.gainDeBase * result.precisionMoyenne * result.bonusRythmeActif, 5);
+    expect(result.gain).toBeCloseTo(
+      pattern.gainDeBase * result.precisionMoyenne * result.bonusRythmeActif, 5);
   });
 
-  it('sans percussions actives, le bonus rythme reste neutre (×1) même si techniquement on-beat', () => {
+  it('sans percussions débloquées, le bonus rythme reste neutre (×1)', () => {
     const state = createDefaultState(); // percussionTier = 0
     const pattern = getPattern('ding_ding');
-    const run = startPatternRun(pattern.id, 0);
-    for (const step of pattern.sequence) recordPatternHit(run, step.noteIndex, step.t, state);
-    const result = finishPatternRun(run, state);
-    expect(result.bonusRythmeActif).toBe(1);
+    const run = runReadyToPlay(pattern.id);
+    const times = patternStepTimesMs(pattern);
+    pattern.sequence.forEach((step, i) => recordPatternHit(run, step.noteIndex, times[i], state));
+    expect(finishPatternRun(run, state).bonusRythmeActif).toBe(1);
   });
 });
 
 describe('GameEngine — intégration frappe/pattern (§4, §6.4)', () => {
-  it('pendant un pattern actif, les clics alimentent le pattern et non le compteur direct', async () => {
+  async function engineWithPattern(id) {
     const { GameEngine } = await import('../../src/engine/game.js');
     const engine = new GameEngine();
     engine.state.handpans = 1e6;
-    engine.unlockPattern('ding_ding');
-    engine.startPattern('ding_ding', 0);
+    engine.unlockPattern(id);
+    engine.startPattern(id, 0);
+    return engine;
+  }
+
+  it('pendant la démonstration, les frappes du joueur sont ignorées', async () => {
+    const engine = await engineWithPattern('ding_ding');
+    const before = engine.state.handpans;
+    const r = engine.click(0, 0);
+    expect(r.mode).toBe('demo');
+    expect(engine.state.handpans).toBe(before);
+    expect(engine.activePatternRun.stepIndex).toBe(0);
+  });
+
+  it('une fois la main donnée, les clics alimentent le pattern et non le compteur direct', async () => {
+    const engine = await engineWithPattern('ding_ding');
+    engine.beginPatternPlayerPhase();
     const before = engine.state.handpans;
     const r = engine.click(0, 0);
     expect(r.mode).toBe('pattern');
-    // Le clic ne crédite pas directement le compteur en cours de pattern (récompense en une fois à la fin).
     expect(engine.state.handpans).toBe(before);
   });
 
   it('le pattern termine et crédite un gain forfaitaire au bon moment', async () => {
-    const { GameEngine } = await import('../../src/engine/game.js');
-    const engine = new GameEngine();
-    engine.state.handpans = 1e6;
-    engine.unlockPattern('ding_ding');
-    engine.startPattern('ding_ding', 0);
+    const engine = await engineWithPattern('ding_ding');
+    engine.beginPatternPlayerPhase();
     const pattern = getPattern('ding_ding');
+    const times = patternStepTimesMs(pattern);
     let last;
-    for (const step of pattern.sequence) last = engine.click(step.noteIndex, step.t);
+    pattern.sequence.forEach((step, i) => {
+      last = engine.click(step.noteIndex, times[i]);
+    });
     expect(last.patternFinished).toBe(true);
     expect(engine.activePatternRun).toBeNull();
     expect(engine.state.patternStats.ding_ding.timesPlayed).toBe(1);
+  });
+
+  it("un joueur humain réaliste (latence, léger décalage) obtient un gain correct", async () => {
+    // Régression : l'ancienne version donnait 0 % de précision à tout humain, parce que
+    // le chrono partait au clic sur « Jouer » dans un autre onglet.
+    const engine = await engineWithPattern('trois_notes');
+    engine.beginPatternPlayerPhase();
+    const pattern = getPattern('trois_notes');
+    const times = patternStepTimesMs(pattern);
+    const anchor = 12_345; // le joueur démarre quand il veut
+    const jitter = [0, 40, -35, 55, -25]; // imprécision humaine typique (±55 ms)
+    let last;
+    pattern.sequence.forEach((step, i) => {
+      last = engine.click(step.noteIndex, anchor + times[i] + jitter[i]);
+    });
+    expect(last.patternFinished).toBe(true);
+    expect(last.precisionMoyenne).toBeGreaterThan(0.8);
+    expect(last.gain).toBeGreaterThan(pattern.gainDeBase * 0.8);
   });
 });

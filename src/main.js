@@ -6,10 +6,10 @@ import { renderAtelierScreen } from './render/screens/atelier.js';
 import { renderHandpanScreen } from './render/screens/handpan.js';
 import * as marketing from './render/marketing.js';
 import { formatNumber } from './engine/economy.js';
+import { panAmount } from './render/ui-kit.js';
 import { getMasterPan } from './data/master-pans.js';
 import { getPattern, PATTERNS } from './data/patterns.js';
 import { isOnBeat } from './engine/percussion.js';
-import { noteToFrequency } from './data/note-frequency.js';
 import * as purchasesEngine from './engine/purchases.js';
 
 const engine = new GameEngine();
@@ -30,6 +30,8 @@ function ensureHandpanMounted() {
   const pan = getMasterPan(mountedPanId);
   handpanView.setNotes(pan.notes);
   document.getElementById('active-pan-label').textContent = pan.label;
+  // Précharge les vrais échantillons du pan : la 1re frappe doit déjà sonner juste.
+  audio.preloadPan(pan.notes);
 }
 
 function handleNoteHit(index) {
@@ -39,26 +41,28 @@ function handleNoteHit(index) {
   const runningPatternId = engine.activePatternRun?.patternId ?? null;
 
   const result = engine.click(index, Date.now());
+  if (result.mode === 'demo') return; // démonstration en cours : on écoute, on ne joue pas
   if (result.mode === 'click') {
-    audio.playNote(noteFrequency(noteName));
-    handpanView.spawnGain(index, `+${formatNumber(result.gain)} ♫`);
+    audio.playNote(noteName);
+    handpanView.spawnGain(index, `+${panAmount(result.gain)}`);
   } else {
-    audio.playNote(noteFrequency(noteName), { velocity: 0.8 });
+    audio.playNote(noteName, { velocity: 0.8 });
     updatePatternStatus();
     if (result.patternFinished) {
-      handpanView.spawnGain(index, `+${formatNumber(result.gain)} ♫ (pattern)`);
+      handpanView.spawnGain(index, `+${panAmount(result.gain)}`);
       onPatternFinished(runningPatternId);
     }
   }
   engine.save();
 }
 
-const noteFrequencyCache = new Map();
-function noteFrequency(noteName) {
-  if (!noteFrequencyCache.has(noteName)) {
-    noteFrequencyCache.set(noteName, noteToFrequency(noteName));
-  }
-  return noteFrequencyCache.get(noteName);
+/** Durée lisible : « 6 h 12 min » plutôt que « 372 min ». */
+function formatDuration(seconds) {
+  const totalMin = Math.round(seconds / 60);
+  if (totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const min = totalMin % 60;
+  return min ? `${h} h ${min} min` : `${h} h`;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -84,9 +88,28 @@ function switchTab(tab) {
   renderActiveScreen();
 }
 
+// Panneaux d'info (bouton « i ») ouverts, conservés d'un rendu à l'autre.
+const openInfoIds = new Set();
+// Dernier HTML rendu par écran : on ne réécrit le DOM que s'il a réellement changé.
+// Sans ça, le re-rendu périodique détruisait le focus clavier toutes les 500 ms et
+// refermait les panneaux d'info sous les doigts du joueur.
+const lastRenderedHtml = { atelier: null, handpan: null };
+
 function renderActiveScreen() {
-  if (activeTab === 'atelier') screens.atelier.innerHTML = renderAtelierScreen(engine);
-  if (activeTab === 'handpan') screens.handpan.innerHTML = renderHandpanScreen(engine);
+  const render = activeTab === 'atelier' ? renderAtelierScreen : activeTab === 'handpan' ? renderHandpanScreen : null;
+  if (!render) return;
+  const html = render(engine);
+  if (lastRenderedHtml[activeTab] === html) return;
+  lastRenderedHtml[activeTab] = html;
+  screens[activeTab].innerHTML = html;
+  restoreOpenInfoPanels(screens[activeTab]);
+}
+
+function restoreOpenInfoPanels(container) {
+  for (const id of openInfoIds) {
+    container.querySelector(`[data-info-panel="${id}"]`)?.removeAttribute('hidden');
+    container.querySelector(`[data-info-toggle="${id}"]`)?.setAttribute('aria-expanded', 'true');
+  }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -115,20 +138,30 @@ const ACTIONS = {
   'buy-passive': (id) => engine.buyPassiveClickUpgrade(id),
   'buy-percussion-tier': () => engine.buyNextPercussionTier(),
   'unlock-pattern': (id) => engine.unlockPattern(id),
-  'play-pattern': (id) => {
-    const r = engine.startPattern(id, Date.now());
-    if (r.ok) {
-      switchTab('principal');
-      updatePatternStatus();
-    }
-    return { success: r.ok };
-  },
+  'play-pattern': (id) => ({ success: startPatternFlow(id) }),
   'buy-generic': (id) => engine.buyGenericUpgrade(id),
   'buy-ultimate': () => engine.buyAccordageUltime(),
 };
 
 function bindDelegatedActions(container) {
   container.addEventListener('click', (e) => {
+    // Bouton « i » : replie/déplie le détail de calcul de la carte.
+    const infoBtn = e.target.closest('[data-info-toggle]');
+    if (infoBtn) {
+      const id = infoBtn.dataset.infoToggle;
+      const panel = container.querySelector(`[data-info-panel="${id}"]`);
+      const willOpen = panel?.hasAttribute('hidden');
+      if (willOpen) {
+        panel.removeAttribute('hidden');
+        openInfoIds.add(id);
+      } else {
+        panel?.setAttribute('hidden', '');
+        openInfoIds.delete(id);
+      }
+      infoBtn.setAttribute('aria-expanded', String(Boolean(willOpen)));
+      return;
+    }
+
     const btn = e.target.closest('[data-action]');
     if (!btn || btn.disabled) return;
     const handler = ACTIONS[btn.dataset.action];
@@ -150,27 +183,92 @@ bindDelegatedActions(screens.handpan);
 const patternStatusEl = document.getElementById('pattern-status');
 const patternStatusName = document.getElementById('pattern-status-name');
 const patternStatusDots = document.getElementById('pattern-status-dots');
+const patternStatusPhase = document.getElementById('pattern-status-phase');
 document.getElementById('pattern-cancel-btn').addEventListener('click', () => {
+  clearDemoTimers();
   engine.cancelPattern();
   updatePatternStatus();
 });
+
+let demoTimers = [];
+function clearDemoTimers() {
+  demoTimers.forEach(clearTimeout);
+  demoTimers = [];
+}
+
+/**
+ * Lance un pattern : démonstration d'abord (le jeu joue la séquence), puis la main au joueur.
+ * Le chrono ne démarre qu'à SA première frappe — plus de temps perdu au changement d'onglet.
+ */
+function startPatternFlow(id) {
+  const r = engine.startPattern(id, Date.now());
+  if (!r.ok) return false;
+  switchTab('principal');
+  audio.resume();
+  runPatternDemo();
+  return true;
+}
+
+function runPatternDemo() {
+  const run = engine.activePatternRun;
+  if (!run) return;
+  const pattern = getPattern(run.patternId);
+  const pan = getMasterPan(engine.state.activeMasterPan);
+  clearDemoTimers();
+
+  // Petit temps d'installation : le joueur vient de changer d'onglet, il doit avoir le
+  // temps de poser les yeux sur l'instrument avant que la démonstration commence.
+  const LEAD_IN_MS = 800;
+
+  run.stepTimes.forEach((t, i) => {
+    const step = pattern.sequence[i];
+    demoTimers.push(
+      setTimeout(() => {
+        handpanView.triggerHitFeedback(step.noteIndex, { strong: true });
+        audio.playNote(pan.notes[step.noteIndex], { velocity: 0.9 });
+      }, LEAD_IN_MS + t)
+    );
+  });
+
+  const demoEnd = LEAD_IN_MS + run.stepTimes[run.stepTimes.length - 1] + 900;
+  demoTimers.push(
+    setTimeout(() => {
+      engine.beginPatternPlayerPhase();
+      updatePatternStatus();
+    }, demoEnd)
+  );
+
+  updatePatternStatus();
+}
+
+const PHASE_LABELS = {
+  demo: '<strong>Écoutez</strong> — le motif se joue tout seul',
+  attente: '<strong>À vous</strong> — frappez la note surlignée pour démarrer',
+  jeu: 'Continuez sur la note surlignée',
+};
 
 function updatePatternStatus() {
   const run = engine.activePatternRun;
   if (!run) {
     patternStatusEl.hidden = true;
+    handpanView.setExpectedNote(null);
+    clearDemoTimers();
     return;
   }
   const pattern = getPattern(run.patternId);
   patternStatusEl.hidden = false;
   patternStatusName.textContent = pattern.nom;
+  patternStatusPhase.innerHTML = PHASE_LABELS[run.phase] ?? '';
   patternStatusDots.innerHTML = pattern.sequence
     .map((_, i) => {
       let cls = 'step';
       if (i < run.hitPrecisions.length) cls += run.hitPrecisions[i] > 0.3 ? ' hit' : ' miss';
+      else if (i === run.stepIndex && run.phase !== 'demo') cls += ' next';
       return `<span class="${cls}"></span>`;
     })
     .join('');
+
+  handpanView.setExpectedNote(engine.getExpectedPatternNote());
 }
 
 function onPatternFinished(patternId) {
@@ -203,7 +301,7 @@ function showCta(cta) {
 if (offlineReport && offlineReport.earned > 1) {
   const modal = document.getElementById('offline-modal');
   document.getElementById('offline-modal-text').textContent =
-    `Pendant votre absence (${Math.round(offlineReport.cappedSeconds / 60)} min), l'atelier a fabriqué ${formatNumber(offlineReport.earned)} ♫.`;
+    `Pendant votre absence (${formatDuration(offlineReport.cappedSeconds)}), l'atelier a fabriqué ${formatNumber(offlineReport.earned)} handpans.`;
   modal.hidden = false;
   document.getElementById('offline-modal-close').addEventListener('click', () => {
     modal.hidden = true;
@@ -273,8 +371,8 @@ let lastSimTime = performance.now();
 let lastShopRefresh = 0;
 
 function updateTopbar() {
-  document.getElementById('handpans-count').textContent = `${formatNumber(engine.state.handpans)} ♫`;
-  document.getElementById('handpans-rate').textContent = `${formatNumber(engine.getProductionPerSecond())} ♫/s`;
+  document.getElementById('handpans-count').innerHTML = panAmount(engine.state.handpans);
+  document.getElementById('handpans-rate').innerHTML = `${panAmount(engine.getProductionPerSecond())} / s`;
   document.getElementById('total-made').textContent = formatNumber(engine.state.totalHandpansMade);
 }
 

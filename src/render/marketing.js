@@ -40,7 +40,7 @@ export function onOfflineReturn(earned, formatNumber) {
   if (earned < 10) return null;
   return {
     id: null,
-    text: `Pendant votre absence, l'atelier a fabriqué ${formatNumber(earned)} ♫.`,
+    text: `Pendant votre absence, l'atelier a fabriqué ${formatNumber(earned)} handpans.`,
     linkUrl: null,
     linkLabel: null,
   };
@@ -48,5 +48,5 @@ export function onOfflineReturn(earned, formatNumber) {
 
 export function buildShareText(state) {
   const pan = getMasterPan(state.activeMasterPan);
-  return `J'ai fabriqué ${Math.floor(state.totalHandpansMade).toLocaleString('fr-FR')} handpans (♫) dans PanIdle, actuellement sur un ${pan.label} ! 🥁`;
+  return `J'ai fabriqué ${Math.floor(state.totalHandpansMade).toLocaleString('fr-FR')} handpans dans PanIdle, actuellement sur un ${pan.label} !`;
 }

@@ -1,27 +1,88 @@
-// Rendu SVG du handpan — inspiré de js/features/handpan-player.js (Mistral Pans) pour
-// l'algorithme de placement des notes en cercle et l'esthétique (coque en gradient radial),
-// mais réécrit sans dépendance à MistralScales/l'audio FLAC (le jeu synthétise ses sons, §8).
+// Rendu SVG du handpan — porte l'algorithme de placement du CONFIGURATEUR de Mistral Pans
+// (`_getTonalPosition` dans js/features/handpan-player.js), pas celui du sélecteur de gamme.
+//
+// Les deux modes du player du site utilisent des conventions OPPOSÉES :
+//   - mode configurateur : `y = center - sin(angle)` -> graves en bas, aiguës en haut ✅
+//   - mode sélecteur     : `y = center + sin(angle)` -> inversé ❌
+// La première est la bonne : sur un vrai handpan, on lit les graves près de soi (en bas)
+// et les aiguës au fond (en haut). Le jeu avait hérité de la seconde.
 import { spawnFloatingNumber } from './floating-numbers.js';
 
 let instanceCounter = 0;
 
-/**
- * Place les notes : le Ding (index 0) au centre-haut, les suivantes en cercle en
- * alternant droite/gauche (zigzag descendant) — même algorithme que le player du site.
- */
-export function computeNotePositions(noteCount, center, outerRadius, innerRadius) {
-  const positions = [{ x: center, y: center - innerRadius * 0.5 }];
-  const remaining = noteCount - 1;
-  if (remaining <= 0) return positions;
+// Proportions reprises telles quelles du configurateur : elles garantissent que les notes
+// tiennent DANS la coque (0.31 + 0.065 < 0.42), ce que ne faisait pas l'ancien réglage
+// (0.42 + 0.09 > 0.46 : 8 notes sur 9 débordaient).
+export const GEOMETRY = {
+  shellRadius: 0.42,
+  tonalRadius: 0.31,
+  dingSize: 0.09,
+  noteSize: 0.065,
+  fontSize: 0.032,
+};
 
-  const startAngle = -Math.PI / 2 + Math.PI / remaining;
-  for (let i = 0; i < remaining; i++) {
-    const index = i % 2 === 0 ? Math.floor(i / 2) : remaining - 1 - Math.floor(i / 2);
-    const angle = startAngle + (index * 2 * Math.PI) / remaining;
-    positions.push({
-      x: center + Math.cos(angle) * outerRadius,
-      y: center + Math.sin(angle) * outerRadius,
-    });
+/**
+ * Position d'une note tonale sur l'anneau — disposition alternée gauche/droite du
+ * configurateur. Angles trigonométriques (0=droite, 90=haut-écran via `center - sin`).
+ * Index 0 = note la plus grave -> bas de l'écran ; dernier index = plus aiguë -> haut.
+ */
+export function getTonalPosition(index, total, radius, center) {
+  let angleDeg;
+  const lastIndex = total - 1;
+  const isEvenTotal = total % 2 === 0;
+
+  if (total === 1) {
+    angleDeg = 270;
+  } else if (total === 2) {
+    angleDeg = index === 0 ? 250 : 290;
+  } else if (index === lastIndex) {
+    angleDeg = 90; // la plus aiguë, tout en haut
+  } else if (isEvenTotal && index === 0) {
+    angleDeg = 270; // la plus grave, tout en bas
+  } else {
+    let adjustedIndex, middleCount, isRight, sideIndex, notesPerSide;
+
+    if (isEvenTotal) {
+      adjustedIndex = index - 1;
+      middleCount = total - 2;
+      isRight = adjustedIndex % 2 === 1;
+      sideIndex = Math.floor(adjustedIndex / 2);
+      notesPerSide = Math.ceil(middleCount / 2);
+      const step = notesPerSide > 1 ? 90 / (notesPerSide - 1) : 0;
+      if (isRight) {
+        angleDeg = 315 + sideIndex * step;
+        if (angleDeg >= 360) angleDeg -= 360;
+      } else {
+        angleDeg = 225 - sideIndex * step;
+      }
+    } else {
+      isRight = index % 2 === 0;
+      sideIndex = Math.floor(index / 2);
+      notesPerSide = Math.ceil((total - 1) / 2);
+      const range = 120;
+      const step = notesPerSide > 1 ? range / (notesPerSide - 1) : 0;
+      if (isRight) {
+        angleDeg = 290 + sideIndex * step;
+        if (angleDeg >= 360) angleDeg -= 360;
+      } else {
+        angleDeg = 250 - sideIndex * step;
+      }
+    }
+  }
+
+  const angleRad = (angleDeg * Math.PI) / 180;
+  return {
+    x: center + Math.cos(angleRad) * radius,
+    y: center - Math.sin(angleRad) * radius, // Y SVG inversé : d'où le moins
+  };
+}
+
+/** Ding au centre exact, tonales sur l'anneau. `notes[0]` est le Ding. */
+export function computeNotePositions(noteCount, center, tonalRadius) {
+  const positions = [{ x: center, y: center }];
+  const tonalCount = noteCount - 1;
+  for (let i = 0; i < tonalCount; i++) {
+    positions.push(getTonalPosition(i, tonalCount, tonalRadius, center));
   }
   return positions;
 }
@@ -46,10 +107,11 @@ export class HandpanView {
   render() {
     const size = this.size;
     const center = size / 2;
-    const outerRadius = size * 0.42;
-    const innerRadius = size * 0.15;
-    const noteRadius = size * 0.09;
-    const positions = computeNotePositions(this.notes.length, center, outerRadius, innerRadius);
+    const shellRadius = size * GEOMETRY.shellRadius;
+    const tonalRadius = size * GEOMETRY.tonalRadius;
+    const noteRadius = size * GEOMETRY.noteSize;
+    const dingRadius = size * GEOMETRY.dingSize;
+    const positions = computeNotePositions(this.notes.length, center, tonalRadius);
     const gradId = `panidle-shell-${this.instanceId}`;
     const shadowId = `panidle-shadow-${this.instanceId}`;
 
@@ -65,17 +127,17 @@ export class HandpanView {
             <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25"/>
           </filter>
         </defs>
-        <circle cx="${center}" cy="${center}" r="${size * 0.46}" fill="url(#${gradId})"/>
-        <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#909090" stroke-width="1.5"/>
+        <circle cx="${center}" cy="${center}" r="${shellRadius}" fill="url(#${gradId})"/>
+        <circle cx="${center}" cy="${center}" r="${shellRadius - 2}" fill="none" stroke="#909090" stroke-width="1.5"/>
         <g class="wave-container"></g>
         ${positions
           .map(
             (pos, i) => `
           <g class="note-group" data-index="${i}" data-x="${pos.x}" data-y="${pos.y}" tabindex="0" role="button" aria-label="Note ${this.notes[i]}">
-            <circle cx="${pos.x}" cy="${pos.y}" r="${i === 0 ? noteRadius * 1.3 : noteRadius}"
+            <circle cx="${pos.x}" cy="${pos.y}" r="${i === 0 ? dingRadius : noteRadius}"
               class="note-circle" filter="url(#${shadowId})"/>
             <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central"
-              class="note-label" font-size="${size * 0.035}px">${this.notes[i]}</text>
+              class="note-label" font-size="${size * GEOMETRY.fontSize}px">${this.notes[i]}</text>
           </g>`
           )
           .join('')}
@@ -130,6 +192,16 @@ export class HandpanView {
     this._spawnRipple(group, index === 0);
   }
 
+  /**
+   * Surligne la note que le joueur doit frapper (pattern en cours). `null` efface.
+   * Distinct du flash de frappe : celui-ci reste tant que la note est attendue.
+   */
+  setExpectedNote(index) {
+    this.container.querySelectorAll('.note-group.expected').forEach((g) => g.classList.remove('expected'));
+    if (index === null || index === undefined) return;
+    this.container.querySelector(`.note-group[data-index="${index}"]`)?.classList.add('expected');
+  }
+
   spawnGain(index, text) {
     const group = this.container.querySelector(`.note-group[data-index="${index}"]`);
     const layer = this.container.querySelector('.floating-layer');
@@ -145,7 +217,7 @@ export class HandpanView {
     if (!waveContainer) return;
     const x = Number(group.dataset.x);
     const y = Number(group.dataset.y);
-    const baseRadius = this.size * 0.09 * (isCenter ? 1.3 : 1);
+    const baseRadius = this.size * (isCenter ? GEOMETRY.dingSize : GEOMETRY.noteSize);
 
     const wave = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     wave.setAttribute('cx', x);

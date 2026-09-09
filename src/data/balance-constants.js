@@ -67,12 +67,18 @@ export const MULTIPLIERS = {
 
 export const METRONOME_BPM = 90; // (défaut)
 
-// bonus = multiplicateur appliqué au clic si la frappe tombe dans la fenêtre de tolérance
+// bonus = multiplicateur appliqué au clic si la frappe tombe dans la fenêtre de tolérance.
+//
+// ATTENTION aux tolérances : ce qui compte n'est pas la fenêtre en ms mais la part du temps
+// qu'elle couvre (2 × tolérance / écart entre deux graduations). Les valeurs d'origine
+// (150/100/60 ms) couvraient 45 %, 60 % puis 72 % de la grille : plus le palier était cher,
+// plus il était FACILE de décrocher le bonus en cliquant au hasard — l'inverse de l'intention.
+// Ces valeurs redonnent une couverture décroissante (45 % / 39 % / 36 %).
 export const PERCUSSION_TIERS = [
   { tier: 0, label: '(base)', subdivision: null, bonus: 1, cost: 0, toleranceMs: 0 },
   { tier: 1, label: 'Percussions — Noires', subdivision: 1, bonus: 1.2, cost: 2000, toleranceMs: 150 },
-  { tier: 2, label: 'Percussions — Croches', subdivision: 2, bonus: 1.5, cost: 15000, toleranceMs: 100 },
-  { tier: 3, label: 'Percussions — Double-croches', subdivision: 4, bonus: 2, cost: 100_000, toleranceMs: 60 },
+  { tier: 2, label: 'Percussions — Croches', subdivision: 2, bonus: 1.5, cost: 15000, toleranceMs: 65 },
+  { tier: 3, label: 'Percussions — Double-croches', subdivision: 4, bonus: 2, cost: 100_000, toleranceMs: 30 },
 ];
 
 // bonusPct : bonus additif (les bonus de plusieurs améliorateurs s'additionnent avant d'être appliqués)
