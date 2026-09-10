@@ -302,6 +302,36 @@ débloqués peuvent être **équipés**, ce qui les rend jouables depuis l'écra
   coût est nul panneau fermé — `renderEquippedPatterns()` s'arrête après avoir mis à jour le
   seul libellé du bouton.
 
+## Marteaux : achat refusé sans effectif (§5.1)
+
+Signalé après coup : un Marteau acheté à 0 employé ne rapportait déjà rien
+(`bonus_marteaux = (...) × nb_employés_total`, c'est LA mécanique de synergie clic↔idle
+voulue par le GDD, pas un oubli) — mais rien n'empêchait de cliquer « Acheter » quand même.
+La carte affichait déjà un avertissement en sous-titre, ce qui rendait le piège plus visible
+sans l'empêcher : le joueur pouvait dépenser sa toute première monnaie sur un objet à effet
+strictement nul.
+
+- **Le garde-fou est posé dans `purchases.buyTool`** (moteur), pas seulement dans l'UI :
+  `employeeTotalCount(state) === 0` → `fail('sans_effectif')`, avant même le test de prix.
+  Cohérent avec le principe déjà en place partout ailleurs dans `purchases.js` — chaque achat
+  vérifie ses propres préconditions côté moteur, l'UI se contente de refléter l'état avec
+  `extraDisabled`.
+- **La formule §5.1 n'a pas changé** — seule la possibilité d'un achat sans effet est
+  retirée. Les deux options proposées (rendre les Marteaux gratuits par défaut, ou
+  simplement verrouiller l'achat après le 1er employé) ne sont pas équivalentes : la
+  première aurait supprimé la mécanique de synergie elle-même (§5.1, explicitement désignée
+  comme LE pilier clic↔idle du jeu dans les commentaires du moteur) ; la seconde — retenue —
+  ne fait que fermer la fenêtre où l'achat ne sert à rien.
+- S'applique aux deux Marteaux (`marteau` et `marteau_pneumatique`) puisque la formule les
+  traite de façon identique, pas seulement au premier.
+- **Bug e2e révélé au passage** : `phase4-marteaux.spec.js` embauchait désormais un employé
+  juste avant un clic simulé — et le 1er employé déclenche un jalon narratif. Sa modale
+  (`position: fixed`, plein écran) intercepte le VRAI clic qui suit, **même avec
+  `{ force: true }`** : ce flag ne bypass que les vérifications d'actionnabilité de
+  Playwright, pas le point d'impact réel du clic navigateur, qui atterrit sur ce qui est
+  visuellement au-dessus au moment du clic. `dismissModals()` avant le clic, comme partout
+  ailleurs dans la suite e2e.
+
 ## Notes de testing (pas des bugs produit)
 
 - **Clics `{ force: true }` sur `.note-group` dans les tests e2e** : la respiration idle

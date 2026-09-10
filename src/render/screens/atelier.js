@@ -29,7 +29,9 @@ function renderTools(state) {
         info: `Chaque marteau ajoute ${t.bonusPerUnit} handpan(s) par frappe et par employé. `
           + `Avec ${employees} employé(s) : +${formatNumber(apport)} par frappe et par marteau.`,
         variant: count > 0 ? 'owned' : '',
-        actions: buyBtn({ action: 'buy-tool', id: t.id, price, label: 'Acheter', affordable: state.handpans >= price }),
+        // Refusé côté moteur à 0 employé (§5.1) : le bouton doit le refléter, sinon on peut
+        // cliquer "Acheter" sans que rien ne se passe — la carte explique déjà pourquoi.
+        actions: buyBtn({ action: 'buy-tool', id: t.id, price, label: 'Acheter', affordable: state.handpans >= price, extraDisabled: employees === 0 }),
       });
     })
     .join('');

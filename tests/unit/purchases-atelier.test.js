@@ -9,21 +9,30 @@ function withHandpans(n) {
 }
 
 describe('Outils (Marteaux) — §5.1', () => {
-  it("refuse l'achat si trop cher", () => {
+  it('refuse l\'achat sans effectif : un marteau à 0 employé ne rapporte rien (bonus_marteaux = ... × nb_employés)', () => {
+    const state = withHandpans(1e6); // largement assez cher pour écarter 'trop_cher'
+    expect(purchases.buyTool(state, 'marteau')).toEqual({ success: false, reason: 'sans_effectif' });
+    expect(state.tools.marteau).toBe(0);
+  });
+
+  it("refuse l'achat si trop cher (avec un effectif suffisant pour écarter l'autre garde-fou)", () => {
     const state = withHandpans(0);
+    state.employees.apprenti = 1;
     expect(purchases.buyTool(state, 'marteau')).toEqual({ success: false, reason: 'trop_cher' });
   });
 
   it('achète et incrémente, coût croissant ensuite', () => {
     const state = withHandpans(1000);
+    state.employees.apprenti = 1;
     expect(purchases.buyTool(state, 'marteau').success).toBe(true);
     expect(state.tools.marteau).toBe(1);
     const price2 = purchases.marteauCost(state, 'marteau');
     expect(price2).toBeGreaterThan(15);
   });
 
-  it('le Marteau pneumatique est verrouillé avant le niveau 2 (Garage)', () => {
+  it('le Marteau pneumatique est verrouillé avant le niveau 2 (Garage), effectif suffisant sinon', () => {
     const state = withHandpans(1e6);
+    state.employees.apprenti = 1;
     expect(purchases.buyTool(state, 'marteau_pneumatique')).toEqual({ success: false, reason: 'verrouille' });
     state.buildings.niveau1Stage = 2; // Garage
     expect(purchases.buyTool(state, 'marteau_pneumatique').success).toBe(true);

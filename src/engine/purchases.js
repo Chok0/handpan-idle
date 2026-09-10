@@ -17,7 +17,7 @@ import { MASTER_PANS, getMasterPan } from '../data/master-pans.js';
 import { PATTERNS, getPattern, MAX_PATTERNS_EQUIPPED } from '../data/patterns.js';
 import { GENERIC_UPGRADES } from '../data/generic-upgrades.js';
 import { cost, getMetricValue } from './economy.js';
-import { employeesMax } from './production.js';
+import { employeesMax, employeeTotalCount } from './production.js';
 import {
   isEmployeeTierUnlocked,
   isMultiplierUnlocked,
@@ -47,6 +47,11 @@ export function buyTool(state, toolId) {
   const def = TOOLS[toolId];
   if (!def) return fail('outil_inconnu');
   if (def.unlock && !isMultiplierUnlocked(state, def.unlock)) return fail('verrouille');
+  // §5.1 : bonus_marteaux = (...) × nb_employés_total — à 0 employé, un marteau ne rapporte
+  // STRICTEMENT rien (c'est la mécanique de synergie clic↔idle, pas un oubli). L'autoriser
+  // quand même ne faisait que piéger le joueur dans une dépense à effet nul ; la carte
+  // l'annonçait déjà en sous-titre, mais rien n'empêchait de cliquer.
+  if (employeeTotalCount(state) === 0) return fail('sans_effectif');
   const price = marteauCost(state, toolId);
   if (!trySpend(state, price)) return fail('trop_cher');
   state.tools[toolId] += 1;
