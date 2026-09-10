@@ -71,7 +71,7 @@ jobs:
       - name: Préparer le dossier de déploiement (site statique uniquement)
         run: |
           mkdir -p dist
-          cp -r index.html css src dist/
+          cp -r index.html css src ressources dist/
 
       - name: Empaqueter pour GitHub Pages
         uses: actions/upload-pages-artifact@v3
