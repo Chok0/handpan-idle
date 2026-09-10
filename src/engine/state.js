@@ -29,6 +29,7 @@ export function createDefaultState() {
     passiveClickUpgrades: { didgeridoo_drone: false, backing_track: false },
     percussionTier: 0,
     patternsUnlocked: [],
+    patternsEquipped: [], // sous-ensemble de patternsUnlocked, plafonné à MAX_PATTERNS_EQUIPPED — jouable depuis l'écran principal
     patternStats: {}, // id -> { timesPlayed, bestPrecision }
 
     genericUpgradesBought: [],

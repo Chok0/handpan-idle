@@ -532,6 +532,58 @@ button { font-family: inherit; cursor: pointer; }
 }
 .pan-icon--brand { width: 1.3em; height: 1.3em; }
 
+/* ═══════════════════════════════════════════════ Bandeau des patterns équipés
+   Repliable : un bouton discret par défaut, pour ne pas rogner sur la hauteur laissée à
+   l'instrument (§ refonte bloc B). Le contenu ne se déploie qu'à la demande — « dropdown »
+   plutôt qu'un panneau fixe en permanence à l'écran. */
+.equip-bar { width: 100%; max-width: 640px; }
+
+.equip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: rgba(30, 27, 23, 0.55);
+  color: var(--color-text-light);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.equip-toggle:hover { border-color: var(--color-accent); color: var(--color-text); }
+.equip-toggle[aria-expanded="true"] { border-color: var(--color-accent); color: var(--color-accent); }
+.equip-toggle__chevron { transition: transform 0.15s ease; }
+.equip-toggle[aria-expanded="true"] .equip-toggle__chevron { transform: rotate(180deg); }
+
+.equip-panel {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(16, 14, 12, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-align: left;
+}
+.equip-panel__hint { margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--color-text-muted); }
+.equip-panel .shop-card { background: linear-gradient(120deg, var(--color-surface), rgba(30, 27, 23, 0.4)); }
+
+.equip-slot--empty {
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.equip-slot--empty .buy-btn { margin: 0; }
+
 /* ═══════════════════════════════════════════════ Mini-jeu de patterns */
 .pattern-panel {
   background: rgba(16, 14, 12, 0.88);

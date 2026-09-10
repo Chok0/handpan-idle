@@ -2,7 +2,7 @@
 // carnet de patterns, améliorations transverses (§7) + Accordage Ultime. Fonction pure.
 import { MASTER_PANS, getMasterPan } from '../../data/master-pans.js';
 import { PASSIVE_CLICK_UPGRADES, PERCUSSION_TIERS, ACCORDAGE_ULTIME } from '../../data/balance-constants.js';
-import { PATTERNS } from '../../data/patterns.js';
+import { PATTERNS, MAX_PATTERNS_EQUIPPED } from '../../data/patterns.js';
 import { GENERIC_UPGRADES } from '../../data/generic-upgrades.js';
 import { formatNumber, getMetricValue } from '../../engine/economy.js';
 import { isAccordageUltimeUnlocked } from '../../engine/unlocks.js';
@@ -108,8 +108,12 @@ function renderPatterns(state, now) {
   const unlocked = PATTERNS.filter((p) => state.patternsUnlocked.includes(p.id));
   const nextLocked = PATTERNS.filter((p) => !state.patternsUnlocked.includes(p.id) && playable(p)).slice(0, 1);
 
+  const equippedCount = state.patternsEquipped.length;
+  const slotsFull = equippedCount >= MAX_PATTERNS_EQUIPPED;
+
   const cards = [...unlocked, ...nextLocked].map((p) => {
     const isUnlocked = state.patternsUnlocked.includes(p.id);
+    const isEquipped = state.patternsEquipped.includes(p.id);
     const stats = state.patternStats[p.id];
     let actions;
     if (!isUnlocked) {
@@ -117,19 +121,29 @@ function renderPatterns(state, now) {
     } else {
       const remaining = stats?.lastPlayedAt ? stats.lastPlayedAt + p.cooldownS * 1000 - now : 0;
       const onCooldown = remaining > 0;
-      actions = `<button class="buy-btn" data-action="play-pattern" data-id="${p.id}" ${onCooldown ? 'disabled' : ''}>
+      const playBtn = `<button class="buy-btn" data-action="play-pattern" data-id="${p.id}" ${onCooldown ? 'disabled' : ''}>
         ${onCooldown ? `Repos (${Math.ceil(remaining / 1000)} s)` : 'Jouer'}
       </button>`;
+      // Équiper rend le pattern jouable depuis l'écran principal (bandeau déroulant sous
+      // l'instrument), sans détour par cet onglet — plafonné à MAX_PATTERNS_EQUIPPED.
+      const equipDisabled = !isEquipped && slotsFull;
+      const equipBtn = `<button class="buy-btn buy-btn--secondary" data-action="toggle-equip-pattern"
+        data-id="${p.id}" ${equipDisabled ? 'disabled title="3 patterns déjà équipés — déséquipez-en un d\'abord"' : ''}>
+        ${isEquipped ? 'Déséquiper' : 'Équiper'}
+      </button>`;
+      actions = `<div class="card-actions">${playBtn}${equipBtn}</div>`;
     }
     return card({
       id: `pat-${p.id}`,
       icon: 'icon-score',
       title: p.nom,
-      subtitle: `${p.sequence.length} notes · jusqu'à ${panAmount(p.gainDeBase)}`,
+      subtitle: `${isEquipped ? 'Équipé · ' : ''}${p.sequence.length} notes · jusqu'à ${panAmount(p.gainDeBase)}`,
       count: stats ? `Meilleure exécution : ${Math.round(stats.bestPrecision * 100)} %` : '',
       info: `Le motif vous est d'abord joué, puis c'est à vous de le reproduire — le chronomètre `
         + `ne part qu'à votre première frappe. Le gain vaut ${formatNumber(p.gainDeBase)} handpans `
-        + `multipliés par votre précision, et encore par le bonus de percussion si vous jouez sur le temps.`,
+        + `multipliés par votre précision, et encore par le bonus de percussion si vous jouez sur le temps. `
+        + `Équiper un pattern (jusqu'à ${MAX_PATTERNS_EQUIPPED} à la fois) l'ajoute au bandeau de l'écran `
+        + `principal, pour le jouer sans changer d'onglet.`,
       variant: isUnlocked ? 'owned' : '',
       actions,
     });
@@ -138,6 +152,7 @@ function renderPatterns(state, now) {
   return `<section class="shop-section">
     <h2>Carnet de partitions</h2>
     ${acquiredNote(unlocked.length, PATTERNS.length)}
+    <p class="acquired-note">Équipés : ${equippedCount} / ${MAX_PATTERNS_EQUIPPED}</p>
     <div class="shop-grid">${cards}</div>
   </section>`;
 }

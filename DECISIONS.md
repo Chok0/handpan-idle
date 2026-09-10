@@ -273,6 +273,35 @@ teal pour les textes et les surbrillances, aurore boréale animée en arrière-p
 - **Les nombres flottants sont sur pastille sombre.** Ils passent au-dessus de la coque, qui
   est **claire** : ni le teal ni le blanc n'y tenaient.
 
+## Patterns équipés — extension du §6.4 (demande post-lancement)
+
+Le carnet de partitions n'existait qu'à un seul endroit (Collection) : jouer un pattern
+imposait de quitter l'écran principal, malgré la mise en avant du §6.4 comme mécanique
+centrale. Extension demandée après coup : jusqu'à `MAX_PATTERNS_EQUIPPED` (3) patterns
+débloqués peuvent être **équipés**, ce qui les rend jouables depuis l'écran principal.
+
+- **Choix : refuser au-delà de 3, pas remplacer automatiquement.** `equipPattern` échoue
+  (`emplacements_pleins`) plutôt que d'éjecter le plus ancien équipé. Un remplacement
+  implicite aurait désarmé un choix du joueur sans le lui dire — cohérent avec le principe
+  déjà en place ailleurs (jamais de rétrogradation silencieuse d'un statut, cf. `patchRow`
+  côté Mistral Pans Website). Déséquiper reste un geste explicite, un clic.
+- **Équiper n'est pas une condition pour jouer.** Le bouton « Jouer » de la Collection reste
+  disponible pour tout pattern débloqué, équipé ou non — équiper ajoute seulement un accès
+  depuis l'écran principal, ça ne restreint rien qui existait déjà.
+- **Bandeau REPLIABLE plutôt que panneau fixe.** La refonte du bloc B fait tenir l'instrument
+  sur toute la hauteur disponible (`min-height: calc(100vh - 168px)`) — un panneau à 3 cartes
+  en permanence à l'écran serait revenu en arrière sur cet objectif. Le bandeau est donc un
+  bouton pilule (« Patterns équipés (n/3) ▾ ») qui déplie son contenu à la demande, et se
+  replie tout seul dès qu'un pattern démarre (le statut de pattern prend sa place).
+- **Le bandeau se referme AUSSI quand on lance un pattern depuis la Collection**, pas
+  seulement depuis lui-même : `startPatternFlow()` (point d'entrée unique des deux chemins)
+  ferme le panneau, plutôt que de dupliquer cette logique à chaque appelant.
+- **Rafraîchi au même rythme que les écrans boutique (2 Hz)**, mais inconditionnellement
+  (pas seulement `activeTab !== 'principal'`) : c'est le seul élément dynamique de l'écran
+  principal en dehors de la boucle de rendu 60 Hz existante (topbar, métronome visuel). Le
+  coût est nul panneau fermé — `renderEquippedPatterns()` s'arrête après avoir mis à jour le
+  seul libellé du bouton.
+
 ## Notes de testing (pas des bugs produit)
 
 - **Clics `{ force: true }` sur `.note-group` dans les tests e2e** : la respiration idle

@@ -170,6 +170,8 @@ export class GameEngine {
   buyPassiveClickUpgrade(id) { return purchases.buyPassiveClickUpgrade(this.state, id); }
   buyNextPercussionTier() { return purchases.buyNextPercussionTier(this.state); }
   unlockPattern(id) { return purchases.unlockPattern(this.state, id); }
+  equipPattern(id) { return purchases.equipPattern(this.state, id); }
+  unequipPattern(id) { return purchases.unequipPattern(this.state, id); }
   buyGenericUpgrade(id) { return purchases.buyGenericUpgrade(this.state, id); }
   buyAccordageUltime() { return purchases.buyAccordageUltime(this.state); }
 

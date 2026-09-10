@@ -14,7 +14,7 @@ import {
   ACCORDAGE_ULTIME,
 } from '../data/balance-constants.js';
 import { MASTER_PANS, getMasterPan } from '../data/master-pans.js';
-import { PATTERNS, getPattern } from '../data/patterns.js';
+import { PATTERNS, getPattern, MAX_PATTERNS_EQUIPPED } from '../data/patterns.js';
 import { GENERIC_UPGRADES } from '../data/generic-upgrades.js';
 import { cost, getMetricValue } from './economy.js';
 import { employeesMax } from './production.js';
@@ -208,6 +208,26 @@ export function unlockPattern(state, id) {
   if (!hasEnoughNotes) return fail('notes_manquantes');
   if (!trySpend(state, pattern.coutDeblocage)) return fail('trop_cher');
   state.patternsUnlocked.push(id);
+  return OK;
+}
+
+/**
+ * Équipe un pattern débloqué : le rend jouable depuis l'écran principal sans détour par la
+ * Collection. Plafonné à MAX_PATTERNS_EQUIPPED — au-delà, il faut en déséquiper un d'abord
+ * (pas de remplacement automatique implicite, pour ne jamais désarmer un choix sans le dire).
+ */
+export function equipPattern(state, id) {
+  if (!state.patternsUnlocked.includes(id)) return fail('non_debloque');
+  if (state.patternsEquipped.includes(id)) return fail('deja_equipe');
+  if (state.patternsEquipped.length >= MAX_PATTERNS_EQUIPPED) return fail('emplacements_pleins');
+  state.patternsEquipped.push(id);
+  return OK;
+}
+
+export function unequipPattern(state, id) {
+  const index = state.patternsEquipped.indexOf(id);
+  if (index === -1) return fail('pas_equipe');
+  state.patternsEquipped.splice(index, 1);
   return OK;
 }
 

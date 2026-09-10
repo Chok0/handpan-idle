@@ -10,7 +10,13 @@ import {
   expectedNoteIndex,
   RHYTHM_COMBO_THRESHOLD,
 } from '../../src/engine/patterns-runtime.js';
-import { PATTERNS, getPattern, patternStepTimesMs, beatIntervalMs as patternBeatMs } from '../../src/data/patterns.js';
+import {
+  PATTERNS,
+  getPattern,
+  patternStepTimesMs,
+  beatIntervalMs as patternBeatMs,
+  MAX_PATTERNS_EQUIPPED,
+} from '../../src/data/patterns.js';
 import { PERCUSSION_TIERS } from '../../src/data/balance-constants.js';
 
 describe('Percussions — §6.3', () => {
@@ -152,6 +158,54 @@ describe('Patterns — §6.4', () => {
     const times = patternStepTimesMs(pattern);
     pattern.sequence.forEach((step, i) => recordPatternHit(run, step.noteIndex, times[i], state));
     expect(finishPatternRun(run, state).bonusRythmeActif).toBe(1);
+  });
+});
+
+describe('Patterns équipés — jouables depuis l\'écran principal', () => {
+  function stateWithUnlocked(ids) {
+    const state = createDefaultState();
+    state.handpans = 1e9;
+    for (const id of ids) purchases.unlockPattern(state, id);
+    return state;
+  }
+
+  it('refuse d\'équiper un pattern non débloqué', () => {
+    const state = createDefaultState();
+    expect(purchases.equipPattern(state, 'ding_ding')).toEqual({ success: false, reason: 'non_debloque' });
+  });
+
+  it('équipe un pattern débloqué', () => {
+    const state = stateWithUnlocked(['ding_ding']);
+    expect(purchases.equipPattern(state, 'ding_ding')).toEqual({ success: true });
+    expect(state.patternsEquipped).toEqual(['ding_ding']);
+  });
+
+  it('refuse de dépasser MAX_PATTERNS_EQUIPPED emplacements', () => {
+    const ids = PATTERNS.slice(0, MAX_PATTERNS_EQUIPPED + 1).map((p) => p.id);
+    const state = stateWithUnlocked(ids);
+    ids.slice(0, MAX_PATTERNS_EQUIPPED).forEach((id) => purchases.equipPattern(state, id));
+    expect(state.patternsEquipped).toHaveLength(MAX_PATTERNS_EQUIPPED);
+    expect(purchases.equipPattern(state, ids[MAX_PATTERNS_EQUIPPED]))
+      .toEqual({ success: false, reason: 'emplacements_pleins' });
+  });
+
+  it('refuse d\'équiper deux fois le même pattern', () => {
+    const state = stateWithUnlocked(['ding_ding']);
+    purchases.equipPattern(state, 'ding_ding');
+    expect(purchases.equipPattern(state, 'ding_ding')).toEqual({ success: false, reason: 'deja_equipe' });
+  });
+
+  it('déséquiper libère un emplacement', () => {
+    const state = stateWithUnlocked(['ding_ding', 'trois_notes']);
+    purchases.equipPattern(state, 'ding_ding');
+    expect(purchases.unequipPattern(state, 'ding_ding')).toEqual({ success: true });
+    expect(state.patternsEquipped).toEqual([]);
+    expect(purchases.equipPattern(state, 'trois_notes')).toEqual({ success: true });
+  });
+
+  it('déséquiper un pattern non équipé échoue proprement', () => {
+    const state = createDefaultState();
+    expect(purchases.unequipPattern(state, 'ding_ding')).toEqual({ success: false, reason: 'pas_equipe' });
   });
 });
 

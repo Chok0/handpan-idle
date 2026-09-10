@@ -13,6 +13,11 @@
 // métronome, bien jouer le pattern ET être sur le temps deviennent la même chose.
 import { METRONOME_BPM } from './balance-constants.js';
 
+// Nombre de patterns qu'on peut avoir « en poche » en même temps, jouables depuis l'écran
+// principal sans détour par la Collection (§6.4 étendu — demande utilisateur post-lancement).
+// Tous les débloquer n'a donc pas rendu tout le carnet redondant : équiper reste un choix.
+export const MAX_PATTERNS_EQUIPPED = 3;
+
 /** Durée d'un temps (noire) en ms — grille de référence commune à tout le jeu. */
 export function beatIntervalMs() {
   return 60000 / METRONOME_BPM;

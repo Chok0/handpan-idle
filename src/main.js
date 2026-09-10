@@ -6,9 +6,9 @@ import { renderAtelierScreen } from './render/screens/atelier.js';
 import { renderHandpanScreen } from './render/screens/handpan.js';
 import * as marketing from './render/marketing.js';
 import { formatNumber } from './engine/economy.js';
-import { panAmount } from './render/ui-kit.js';
+import { panAmount, card } from './render/ui-kit.js';
 import { getMasterPan } from './data/master-pans.js';
-import { getPattern, PATTERNS } from './data/patterns.js';
+import { getPattern, PATTERNS, MAX_PATTERNS_EQUIPPED } from './data/patterns.js';
 import { INTRO } from './data/story.js';
 import { isOnBeat } from './engine/percussion.js';
 import * as purchasesEngine from './engine/purchases.js';
@@ -140,6 +140,9 @@ const ACTIONS = {
   'buy-percussion-tier': () => engine.buyNextPercussionTier(),
   'unlock-pattern': (id) => engine.unlockPattern(id),
   'play-pattern': (id) => ({ success: startPatternFlow(id) }),
+  'toggle-equip-pattern': (id) => (
+    engine.state.patternsEquipped.includes(id) ? engine.unequipPattern(id) : engine.equipPattern(id)
+  ),
   'buy-generic': (id) => engine.buyGenericUpgrade(id),
   'buy-ultimate': () => engine.buyAccordageUltime(),
 };
@@ -179,6 +182,80 @@ bindDelegatedActions(screens.atelier);
 bindDelegatedActions(screens.handpan);
 
 // ---------------------------------------------------------------------------------------
+// Bandeau des patterns équipés (écran principal) — demande post-lancement : pouvoir garder
+// jusqu'à MAX_PATTERNS_EQUIPPED patterns « en poche » et les jouer sans passer par la
+// Collection. Repliable (bouton + panneau) pour ne pas rogner la hauteur de l'instrument.
+// ---------------------------------------------------------------------------------------
+const equippedToggle = document.getElementById('equipped-toggle');
+const equippedToggleLabel = document.getElementById('equipped-toggle-label');
+const equippedPanel = document.getElementById('equipped-panel');
+const equippedSlots = document.getElementById('equipped-slots');
+let equippedPanelOpen = false;
+
+function setEquippedPanelOpen(open) {
+  equippedPanelOpen = open;
+  equippedPanel.hidden = !open;
+  equippedToggle.setAttribute('aria-expanded', String(open));
+  if (open) renderEquippedPatterns();
+}
+equippedToggle.addEventListener('click', () => setEquippedPanelOpen(!equippedPanelOpen));
+
+/** Rejoue le même contenu que renderPatterns() côté Collection, en plus compact. */
+function renderEquippedPatterns() {
+  equippedToggleLabel.textContent = `Patterns équipés (${engine.state.patternsEquipped.length}/${MAX_PATTERNS_EQUIPPED})`;
+  if (!equippedPanelOpen) return; // rien d'autre à recalculer tant que le panneau est fermé
+
+  const now = Date.now();
+  const running = engine.activePatternRun;
+  const slots = [];
+  for (let i = 0; i < MAX_PATTERNS_EQUIPPED; i++) {
+    const id = engine.state.patternsEquipped[i];
+    if (!id) {
+      slots.push(`<div class="equip-slot--empty">
+        <span>Emplacement libre</span>
+        <button class="buy-btn buy-btn--secondary" data-action="goto-collection">Équiper depuis la Collection</button>
+      </div>`);
+      continue;
+    }
+    const pattern = getPattern(id);
+    const stats = engine.state.patternStats[id];
+    const remaining = stats?.lastPlayedAt ? stats.lastPlayedAt + pattern.cooldownS * 1000 - now : 0;
+    const onCooldown = remaining > 0;
+    const disabled = onCooldown || Boolean(running);
+    slots.push(card({
+      id: `equip-${id}`,
+      icon: 'icon-score',
+      title: pattern.nom,
+      subtitle: `${pattern.sequence.length} notes · jusqu'à ${panAmount(pattern.gainDeBase)}`,
+      variant: 'owned',
+      actions: `<div class="card-actions">
+        <button class="buy-btn" data-action="play-equipped-pattern" data-id="${id}" ${disabled ? 'disabled' : ''}>
+          ${onCooldown ? `Repos (${Math.ceil(remaining / 1000)} s)` : 'Jouer'}
+        </button>
+        <button class="buy-btn buy-btn--secondary" data-action="unequip-pattern" data-id="${id}">Déséquiper</button>
+      </div>`,
+    }));
+  }
+  equippedSlots.innerHTML = slots.join('');
+}
+
+equippedSlots.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn || btn.disabled) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.action === 'play-equipped-pattern') {
+    startPatternFlow(id); // ferme le panneau (startPatternFlow), le statut de pattern prend le relais
+  } else if (btn.dataset.action === 'unequip-pattern') {
+    engine.unequipPattern(id);
+    engine.save();
+    renderEquippedPatterns();
+  } else if (btn.dataset.action === 'goto-collection') {
+    setEquippedPanelOpen(false);
+    switchTab('handpan');
+  }
+});
+
+// ---------------------------------------------------------------------------------------
 // Statut de pattern en cours (zone d'affichage §9)
 // ---------------------------------------------------------------------------------------
 const patternStatusEl = document.getElementById('pattern-status');
@@ -205,6 +282,7 @@ function startPatternFlow(id) {
   const r = engine.startPattern(id, Date.now());
   if (!r.ok) return false;
   switchTab('principal');
+  setEquippedPanelOpen(false); // le statut de pattern prend sa place dans le même bandeau
   audio.resume();
   runPatternDemo();
   return true;
@@ -432,8 +510,11 @@ function loop(now) {
   updateMetronomeVisual(now);
 
   // Les écrans boutique n'ont pas besoin de 60Hz : 2Hz suffit pour refléter les coûts/plafonds.
-  if (now - lastShopRefresh > 500 && activeTab !== 'principal') {
-    renderActiveScreen();
+  // Le bandeau des patterns équipés (écran principal) suit le même rythme — coûte peu quand
+  // il est fermé (renderEquippedPatterns() se limite alors au libellé du compte).
+  if (now - lastShopRefresh > 500) {
+    if (activeTab !== 'principal') renderActiveScreen();
+    renderEquippedPatterns();
     lastShopRefresh = now;
   }
 
@@ -442,6 +523,7 @@ function loop(now) {
 
 ensureHandpanMounted();
 updateTopbar();
+renderEquippedPatterns();
 requestAnimationFrame(loop);
 
 // Sauvegarde à la fermeture/perte de focus (en plus de l'autosave périodique du moteur).

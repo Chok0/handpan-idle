@@ -131,6 +131,22 @@
             <span>Fabriqués : <strong id="total-made">0</strong></span>
             <span>Tempo : <span class="metronome-dot" id="metronome-dot"></span></span>
           </div>
+
+          <!-- Bandeau déroulant : jusqu'à MAX_PATTERNS_EQUIPPED patterns équipés depuis la
+               Collection, jouables ici sans changer d'onglet (demande post-lancement). -->
+          <div class="equip-bar">
+            <button class="equip-toggle" id="equipped-toggle" aria-expanded="false" aria-controls="equipped-panel">
+              <svg class="pan-icon" aria-hidden="true"><use href="#icon-score"/></svg>
+              <span id="equipped-toggle-label">Patterns équipés (0/3)</span>
+              <span class="equip-toggle__chevron" aria-hidden="true">▾</span>
+            </button>
+            <div class="equip-panel" id="equipped-panel" hidden>
+              <p class="equip-panel__hint">Tant qu'un pattern est équipé, vous pouvez le jouer ici pour gagner
+                plus de handpans qu'en frappant au hasard — sans passer par la Collection.</p>
+              <div class="shop-grid" id="equipped-slots"></div>
+            </div>
+          </div>
+
           <div id="pattern-status" class="pattern-panel" hidden>
             <h3 id="pattern-status-name"></h3>
             <p class="pattern-phase" id="pattern-status-phase"></p>
