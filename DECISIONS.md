@@ -166,6 +166,35 @@ sujet.
   dire "site statique déployable tel quel" (ce que fait GitHub Pages), pas "double-cliquer
   sur index.html" — cohérent avec la demande explicite d'un déploiement via GitHub Action.
 
+### Déploiement Pages resté cassé pendant plusieurs runs — deux causes distinctes
+
+Le job `deploy` est resté en échec (ou `skipped`) jusqu'au run #10 alors que la CI/CD
+existe depuis le run #1.
+Deux problèmes indépendants, découverts l'un après l'autre :
+
+1. **`github.event.repository.default_branch` était périmé.** Le dépôt est parti sans
+   branche `main` (défaut = `claude/document-consultation-rogezn`), renommée ensuite. La
+   condition `if` du job `deploy` compare `github.ref` à cette valeur pour ne déployer que
+   depuis la branche par défaut — mais sur plusieurs runs suivants, elle continuait de ne
+   pas matcher `main` (job `skipped`, jamais exécuté), sans doute une valeur mise en cache
+   côté Actions au moment du renommage. Le déploiement n'a donc, en pratique, jamais été
+   tenté avant le run #9.
+2. **`Settings → Pages → Build and deployment → Source` n'était pas sur "GitHub
+   Actions".** Une fois la condition ci-dessus satisfaite, le job `deploy` s'est enfin
+   déclenché — et a échoué en ~1-2 s, **sans exécuter la moindre étape** (`Set up job`
+   absent, logs introuvables : 404). Cette signature — rejet avant attribution d'un runner,
+   reproductible à l'identique sur deux runs consécutifs — distingue un problème de
+   configuration du dépôt d'une panne dans le script. Non observable depuis l'API GitHub
+   Actions (aucun message d'erreur exposé par `get_check_run`/`get_job_logs` pour ce genre
+   de rejet) : seul un accès à `Settings → Pages` permet de le voir et de le corriger. Le
+   README documentait déjà ce prérequis — l'admettre en pratique a quand même demandé un
+   aller-retour, faute d'y avoir accès.
+3. **Bug indépendant trouvé au passage** : le dossier de déploiement ne copiait que
+   `index.html`, `css/` et `src/` — pas `ressources/` (échantillons audio du bloc A,
+   polices auto-hébergées du bloc B). Même une fois 1. et 2. réglés, le site déployé serait
+   retombé silencieusement en synthèse audio et police système. Corrigé dans le même passage
+   (`cp -r index.html css src ressources dist/`).
+
 ## Bug réel trouvé par la simulation accélérée (Phase 8) — corrigé
 
 `tests/simulation/run-simulation.mjs` (bot glouton qui joue le jeu en accéléré) a mis en
